@@ -33,6 +33,7 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include "rh.h"
 #include "error.h"
@@ -49,8 +50,8 @@ double MolProfile(MolecularLine *mrt, int k, int mu, bool_t to_obs,
                   double lambda,
 		  double *phi_Q, double *phi_U, double *phi_V,
 		  double *psi_Q, double *psi_U, double *psi_V);
-
-
+double wn_stark(double nstar,double ne1, double tg1, double nn1);
+/* wn_stark routine located in readatom.c */
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
@@ -71,6 +72,7 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize)
     *n_i, *n_j, Bijxhc_4PI, wlambda, chi_l, *chi_Q, *chi_U, *chi_V,
      eta_l, *eta_Q, *eta_U, *eta_V, *chip_Q, *chip_U, *chip_V,
     *phi_Q, *phi_U, *phi_V, *psi_Q, *psi_U, *psi_V;
+  double *n_0, ne1, tg1, nn1, wnratio;
   bool_t  solveStokes;
 
   double lag, rho_int, *rho_tmp, sign;
@@ -141,6 +143,7 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize)
 	j = line->j;
 	n_i = atom->n[i];
 	n_j = atom->n[j];
+	n_0 = atom->n[0];
 
  	/* --- Relative position in line profile --    -------------- */
 
@@ -207,6 +210,33 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize)
 	for (k = 0;  k < atmos.Nspace;  k++) {
 	  atom->rhth[nt].gij[n][k] = gijk;
 	  atom->rhth[nt].Vij[n][k] = Bijxhc_4PI * phi[k];
+     /* Pseudo-continuum effects (multiplies b-b transitions by occuputional prob) at Balmer and Paschen edges:
+	     See Dappen et al. 1987 ApJ, 319 195, Eq. 34, Tremblay & Bergeron 2009.
+	     Done here for Balmer and Paschen series and for max 20-level H atom.
+	     Note: applies modifications for all active atoms if density at bottom > 1E22 (this if-statement is meant to pick out hydrogen only).
+	     Comment these two blocks out if you don't want pseudo-continuum effects for b-b transitions at Balmer and Paschen edges.
+	     
+	     Note above is from Adam Kowalski, who implemented these changes (see Kowalski, Allred, et al. 2017 ApJ 837, 125.) in Han Uitenbroek's version 
+	     of RH. Graham Kerr implemented these mods to the version of RH from the UIO ITA github, the 1.5D version developed by Tiago. Graham changed 
+	     the condition to explicitly grab H 
+	  */
+     // if (n_0[atmos.Nspace-1] > 1E22) {
+	if ((strcmp(atom->ID,"H") == 0) && (atom->Nlevel == 20)){
+	    if (i==1 && j < 19) {   /* for Balmer transitions  */
+	      tg1 = atmos.T[k] ;
+	      ne1 = atmos.ne[k] / 1E6 ;
+	      nn1 = n_0[k] / 1E6 ;
+	      wnratio = wn_stark(j+1.0,ne1,tg1,nn1)/wn_stark(2.0,ne1,tg1,nn1) ;
+	      atom->rhth[nt].Vij[n][k] *= wnratio ;
+	    }
+	    if (i==2 && j < 19) {    /* for Paschen transitions  */
+	      tg1 = atmos.T[k] ;
+	      ne1 = atmos.ne[k] / 1E6 ;
+	      nn1 = n_0[k] / 1E6 ;
+	      wnratio = wn_stark(j+1.0,ne1,tg1,nn1)/wn_stark(3.0,ne1,tg1,nn1) ;
+	      atom->rhth[nt].Vij[n][k] *= wnratio ;
+	    }
+	  }
 	}
 
 	/* --- PRD correction to emission profile --   -------------- */
@@ -291,7 +321,7 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize)
 	if (initialize) {
 	  wlambda = getwlambda_cont(continuum, la);
 	  for (k = 0;  k < atmos.Nspace;  k++) {
-	    atom->rhth[nt].Vij[n][k] = continuum->alpha[la];
+	    atom->rhth[nt].Vij[n][k] = continuum->alpha2d[k][la];
 	    atom->rhth[nt].gij[n][k] =
 	      atom->nstar[i][k] / atom->nstar[j][k] *
 	      exp(-hc_k / (continuum->lambda[la] * atmos.T[k]));

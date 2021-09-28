@@ -161,7 +161,7 @@ bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
       result &= xdr_vector(xdrs, (char *) continuum->lambda,
 			   continuum->Nlambda,
 			   sizeof(double), (xdrproc_t) xdr_double);
-      result &= xdr_vector(xdrs, (char *) continuum->alpha,
+      result &= xdr_vector(xdrs, (char *) continuum->alpha2d,
 			   continuum->Nlambda,
 			   sizeof(double), (xdrproc_t) xdr_double);
     }

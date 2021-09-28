@@ -596,7 +596,7 @@ void initSolution_p(void)
 	      gijk = atom->nstar[i][k]/atom->nstar[j][k] *
 		exp(-hc_k/(continuum->lambda[la] * atmos.T[k]));
 	      atom->Gamma[ij][k] += gijk * twohnu3_c2 *
-		continuum->alpha[la]*wla;
+		continuum->alpha2d[k][la]*wla;
 	    }
 	    break;
 	  default:

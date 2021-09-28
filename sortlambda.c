@@ -27,6 +27,8 @@
 
 
 /* --- Function prototypes --                          -------------- */
+double **allocate2d(int n1, int n2);
+void deallocate2d(double **arr);
 
 
 /* --- Global variables --                             -------------- */
@@ -43,11 +45,11 @@ extern char messageStr[];
 void SortLambda()
 {
   const char routineName[] = "SortLambda";
-  register int kr, n, m, nspect, la, nact;
+  register int kr, n, m, nspect, la, nact, k;
 
   bool_t  hunt, unique, result;
   int     Nred, Nspectrum, Nlambda_original, Z, i, j, Nwave;
-  double *alpha_original, gbf_0, n_eff, *wavetable;
+  double *alpha_original, **alpha2d_original, gbf_0, n_eff, *wavetable;
   ActiveSet *as;
   Atom *atom;
   Molecule *molecule;
@@ -322,6 +324,8 @@ void SortLambda()
 	continuum->alpha =
 	  (double *) realloc(continuum->alpha,
 			     continuum->Nlambda*sizeof(double));
+  // Need a reallocate here?
+  continuum->alpha2d = allocate2d(atmos.Nspace, continuum->Nlambda);
 
 	Z = atom->stage[continuum->j];
 	n_eff = Z * sqrt(E_RYDBERG /
@@ -332,19 +336,31 @@ void SortLambda()
 	  continuum->alpha[la] = continuum->alpha0 *
 	    Gaunt_bf(continuum->lambda[la], n_eff, Z) / gbf_0 *
 	    CUBE(continuum->lambda[la]/continuum->lambda0);
+
+    // If HYDROGENIC, need to assign alpha2d:
+    for (k = 0; k < atmos.Nspace; k++) {
+      continuum->alpha2d[k][la] = continuum->alpha[la];
+    }
 	}
+    //printf("%li\t%le\n",continuum->i,continuum->alpha2d[50][0]);
       } else {
-	alpha_original = continuum->alpha;
-	splineCoef(Nlambda_original, continuum->lambda, alpha_original);
 
-	continuum->alpha =
-	  (double *) malloc(continuum->Nlambda * sizeof(double));
-	splineEval(continuum->Nlambda, spectrum.lambda + continuum->Nblue,
-		   continuum->alpha, hunt=TRUE);
+	alpha2d_original = continuum->alpha2d;
+	
+  continuum->alpha2d = allocate2d(atmos.Nspace, continuum->Nlambda);
 
-	free(continuum->lambda);
-	continuum->lambda = spectrum.lambda + continuum->Nblue;
-	free(alpha_original);
+      for (k = 0; k < atmos.Nspace; k++) {
+
+	splineCoef(Nlambda_original, continuum->lambda, alpha2d_original[k]);
+
+  splineEval(continuum->Nlambda, spectrum.lambda + continuum->Nblue,
+       continuum->alpha2d[k], hunt=TRUE);
+        }
+
+  free(continuum->lambda);
+  continuum->lambda = spectrum.lambda + continuum->Nblue;
+
+  deallocate2d(alpha2d_original);
       }
     }
     /* --- Then go through the bound-bound transitions -- ----------- */
@@ -537,6 +553,7 @@ void SortLambda()
       }
     }
   }
+  
   getCPU(2, TIME_POLL, "SortLambda");
 }
 /* ------- end ---------------------------- SortLambda.c ------------ */

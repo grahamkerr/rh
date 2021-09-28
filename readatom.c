@@ -24,8 +24,10 @@
        --                                              -------------- */
 
 
+// #define _GNU_SOURCE
 #include <ctype.h>
 #include <stdlib.h>
+// #define _GNU_SOURCE
 #include <math.h>
 #include <string.h>
 
@@ -46,6 +48,9 @@
 
 void  distribute_nH(void);
 char *getAtomID(char *atom_file);
+double wn_stark(double nstar,double ne1, double tg1, double nn1);
+double **allocate2d(int n1, int n2);
+void deallocate2d(double **arr);
 
 
 /* --- Global variables --                             -------------- */
@@ -73,6 +78,8 @@ void readAtom(Atom *atom, bool_t active)
           Nread, Nrequired, checkPoint, L, nq, status;
   double  f, C, lambda0, lambdamin, vtherm, S, Ju, Jl,
     c_sum, waveratio, lambda_air;
+  double Z, n_eff, gbf_0, nstar, wnstar, wn_i, hc_cgs,
+    tg1, ne1, nn1; 
 
   AtomicLine *line, *line1;
   AtomicContinuum *continuum;
@@ -285,6 +292,12 @@ void readAtom(Atom *atom, bool_t active)
       line->c_fraction[0] = 1.0;
     }
 
+   if (strstr(shapeStr, "VCS_STARK"))
+    {
+      line->doVCS_Stark=TRUE;
+      InitLemkeStark(line);
+    }
+
     if (strstr(vdWstr, "PARAMTR"))
       line->vdWaals = RIDDER_RENSBERGEN;
     else if (strstr(vdWstr, "UNSOLD")) {
@@ -376,14 +389,48 @@ void readAtom(Atom *atom, bool_t active)
     continuum->alpha   =
       (double *) malloc(continuum->Nlambda * sizeof(double));
 
+
     if (strstr(nuDepStr, "EXPLICIT")) {
+      continuum->alpha2d = allocate2d(atmos.Nspace, continuum->Nlambda);
+
       continuum->hydrogenic = FALSE;
       for (la = continuum->Nlambda-1;  la >= 0;  la--) {
 	getLineString(&atom_string, COMMENT_CHAR, inputLine, exit_on_EOF=TRUE);
 	Nread = sscanf(inputLine, "%lf %lf",
 		        &continuum->lambda[la], &continuum->alpha[la]);
 	checkNread(Nread, Nrequired=2, routineName, checkPoint=6);
+  /* Begin major w_n additions; see Tremblay et al. 2009 ApJ 696 1755  for summary */
+  /* For EXPLICIT continua in atom file, calls wn_stark() and multiplies the continuum->alpha2d
+   by D_i at all depths;  D_i = (1 - w_n* / w_n,lower) see Dappen et al. 1987 ApJ 319, 195 Eq. 32 
+   Note above from Adam Kowalski, who modified Han Uitenbroek's version of RH. Graham Kerr is following
+   Adam's work and modifying the version hosted by the UIO ITA, primarily for use with the 1.5D MPI RH.*/
+      for (k = 0; k < atmos.Nspace; k++) { 
+    continuum->alpha2d[k][la] = continuum->alpha[la];
+  if (continuum->alpha2d[k][la] < 0.0) { 
+    Z = atom->stage[continuum->j];
+    n_eff = Z * sqrt(E_RYDBERG /
+       (atom->E[continuum->j] - atom->E[continuum->i]));
+    gbf_0 = Gaunt_bf(continuum->lambda0, n_eff, Z); 
+    hc_cgs = 6.6260755E-27 * 2.99792E10 ;
+    /* nstar given by Dappen et al. 1987 ApJ 319, 195, Eq. 31
+       It is assumed here that Z=1, 2.18e-11 ergs = 13.6 eV,
+       lambda converted from nm to cm
+     */
+    nstar = pow((1.0 / pow(n_eff,2) - hc_cgs / (continuum->lambda[la]*1E-7*2.1787102E-11)), -0.5);
+          tg1 = atmos.T[k] ;
+    ne1 = atmos.ne[k] / 1E6 ;
+    nn1 = atmos.nH[0][k] / 1E6 ;
+    wnstar = wn_stark(nstar, ne1, tg1, nn1) ;
+    /* The following line assumes EXPLICIT only applied to Balmer series (n=2) */
+    wn_i = wn_stark(2.0, ne1, tg1, nn1) ;
+    // Testing purposes:    printf("%lf\t%lE\n",continuum->alpha2d[1][la],nstar);
+    continuum->alpha2d[k][la] = continuum->alpha0 *
+      Gaunt_bf(continuum->lambda[la], n_eff, Z) / gbf_0 *
+      CUBE(continuum->lambda[la]/continuum->lambda0) * (1.0 - wnstar / wn_i);
+  }
+  /* End major w_n additions for EXPLICIT continua */
       }
+    }
       for (la = 1;  la < continuum->Nlambda;  la++) {
 	if (continuum->lambda[la] < continuum->lambda[la-1]) {
 	  sprintf(messageStr, "Wavelength for continuum %d - %d"
@@ -632,6 +679,7 @@ void initAtomicLine(AtomicLine *line)
   line->polarizable = FALSE;
   line->Voigt = TRUE;
   line->PRD = FALSE;
+  line->doVCS_Stark = FALSE;
   line->vdWaals = UNSOLD;
   line->i = line->j = line->Nlambda = line->Nblue = 0;
   line->Ncomponent = 1;
@@ -652,6 +700,7 @@ void initAtomicLine(AtomicLine *line)
   line->Ng_prd = NULL;
   line->atom = NULL;
   line->xrd = NULL;
+  line->VCS_stark = NULL;
   line->frac = NULL;
   line->id0 = NULL;
   line->id1 = NULL;
@@ -672,6 +721,7 @@ void initAtomicContinuum(AtomicContinuum *continuum)
   continuum->lambda = NULL;
   continuum->alpha0 = 0.0;
   continuum->alpha = continuum->Rij = continuum->Rji = NULL;
+  continuum->alpha2d = NULL;
   continuum->atom = NULL;
 }
 /* ------- end ---------------------------- initAtomicContinuum.c --- */
@@ -743,6 +793,7 @@ void freeAtomicLine(AtomicLine *line)
   if (line->Qelast != NULL)  free(line->Qelast);
   if (line->rho_prd != NULL) freeMatrix((void **) line->rho_prd);
   if (line->fp_GII != NULL)  free(line->fp_GII);
+  if (line->VCS_stark != NULL) freeVCS_Stark(line->VCS_stark);
 }
 /* ------- end ---------------------------- freeAtomicLine.c -------- */
 
@@ -757,8 +808,22 @@ void freeAtomicContinuum(AtomicContinuum *continuum)
   if (continuum->Rji != NULL)     free(continuum->Rji);
 
   if (continuum->alpha != NULL)   free(continuum->alpha);
+  if (continuum->alpha2d != NULL)   deallocate2d(continuum->alpha2d);
+
 }
 /* ------- end ---------------------------- freeAtomicContinuum.c --- */
+
+/* ------- begin -------------------------- freeVCS_Stark.c --------- */
+
+void freeVCS_Stark(VCS_Stark *VCS_stark)
+{
+  /* --- Free allocated memory for VCS_stark structure -- ----------- */
+
+  if (VCS_stark->DopplerWL != NULL) freeMatrix((void**) VCS_stark->DopplerWL);
+  if (VCS_stark->S != NULL) freeMatrix((void**) VCS_stark->S);
+
+}
+/* ------- end ---------------------------- freeVCS_Stark.c --------- */
 
 /* ------- begin -------------------------- readAtomicModels.c ------ */
 
@@ -918,3 +983,187 @@ char *getAtomID(char *atom_file)
   return atomID;
 }
 /* ------- end ---------------------------- getAtomID.c ------------- */
+
+/* ------- begin -------------------------- WN_STARK.c -------------- */
+double wn_stark(double nstar, double ne1, double tg1, double nn1)
+{
+  double Zjk, Zr, el, chiijk, betaijk, ao, Fo, P1, P2, P3, 
+    P4, P5, X, C1, C2, a, Kn, lilf, Q, wn_neutral, temper, n_electron, n_neutral;
+  /* Note this sub routine works in CGS units and betaijk = beta_crit */
+  /* Calculation of w_n(total) from Q-fit Hooper distribution -- Nayfonov et
+   al. 1999 ApJ 526, 451, Section 4.3.2 */
+  Zjk = 1.0;
+  /* Zjk = 1.0 and setting N_p = N_e distributes all non-hydrogenic ion charge as if they 
+     were protons; See Hummer & Mihalas 1988 Equation 4.32. */
+  Zr = 1.0;
+  /* el is electron charge in CGS units */
+  el = 4.803E-10;
+  temper = tg1;
+  n_electron = ne1;
+  n_neutral = nn1;
+  /* ao = Bohr radius */
+  ao = 5.2918E-9;
+  /* Fo = normal field strength, Mihalas Sect 9-4, Eq. 9-89. Fo is the field strength 
+     arising from an ion at the mean interionic distance. */
+  Fo = 1.25E-9 * Zjk * pow(n_electron, 0.666666667) ;
+  /* beta critical is given by Tremblay et al. 2009 ApJ 696, 1755 Eq. 14 */
+  betaijk = (2.0 * nstar + 1.0)/(6.0 * pow(nstar,4) * 
+         pow((nstar+1.0),2)) * (el / (pow(ao,2) * Fo)) ;
+
+  /* Must be careful for n=1,2,3 (see discussion in Tremblay et al. 2009, Section 2.3)
+     But the EXPLICIT wavelength range does not cover Balmer H-alpha so we are OK. 
+  */           
+  //  if (nstar <= 3.0) {
+  //  Kn = 1.0 ; 
+  // }
+  //if (nstar > 3.0) {
+  //  Kn = 16.0/3.0 * nstar / pow((nstar+1.0),2);
+  //} 
+
+  /*  See Section 4.3.2 of Nayfonov for the following */
+  P1 = 0.1402 ;
+  P2 = 0.1285 ;
+  P3 = 1.0;
+  P4 = 3.15;
+  P5 = 4.0;
+
+  a = 0.09 * pow(n_electron,1./6.) / pow(temper, 0.5) ; 
+
+  X = pow((1.0 + P3 * a),P4) ;
+  C1 = P1 * (X + P5 * Zr * pow(a,3)) ;
+  C2 = P2 * X ;
+  
+  /* lilf given by Eq. 17 in Nayfonov et al. 1999; Q given by Eq. 16 */
+  lilf = C1 * pow(betaijk,3) / (1.0 + C2 * pow(betaijk,1.5)) ;
+  /* w_n(charged) = Q because betaijk=beta_crit */
+  Q = lilf / (1.0 + lilf) ;
+  
+  /* Use `hard-sphere' model for w_n(neutral); Hummer & Mihalas 1988 Section IIIa */
+  wn_neutral = exp(-4.0 * 3.14159/3.0 * n_neutral * pow((pow(nstar,2) * ao + ao),3)) ; 
+  
+  /* w_n(total) = w_n(neutral) x w_n(charged) */
+  return wn_neutral * Q ;                
+}
+/* ------- end -------------------------- WN_STARK.c -------------- */
+
+/* ------- begin -------------------------- InitLemkeStark.c -------- */
+
+#define NALPHA 66
+#define NT 8
+#define NNE 17
+#define NLINES 21
+#define NSERIES 4
+#define NTOTAL NSERIES*NLINES*NALPHA*NNE*NT
+#define NLNS NSERIES*NLINES
+#define NWL 1501
+void InitLemkeStark(AtomicLine *line)
+{
+  int i, j, k, series, lne;
+  int mp[NSERIES][NLINES], mne[NSERIES][NLINES], nline[NSERIES];
+  double svcs[NSERIES][NLINES][NALPHA][NNE][NT], alpha[NALPHA], lgT[NT], lgNe[NNE];
+  double log_alpha0[NSERIES][NLINES], log_ne0[NSERIES][NLINES];
+  double log_alpha_inc[NSERIES][NLINES], log_ne_inc[NSERIES][NLINES];
+  double sum,***arr3d, *tempWL, *tempWLmp, wlmp;
+  FILE *fplemkestark;
+  const char routineName[] = "InitLemkeStark";
+
+  if (strstr(line->atom->ID, "H ") == NULL) {
+     sprintf(messageStr, "Model is not a hydrogen atom: %s", line->atom->ID);
+     Error(ERROR_LEVEL_2, routineName, messageStr);
+  }
+
+  if ((fplemkestark = fopen("../Atmos/LemkeStark.dat","rb")) == NULL)
+  {
+     sprintf(messageStr, "Error opening LemkeStark.dat");
+     Error(ERROR_LEVEL_2, routineName, messageStr);
+  }
+  
+  if (fread(svcs[0][0][0][0],sizeof(double),NTOTAL,fplemkestark) != NTOTAL 
+     || fread(lgT, sizeof(double), NT, fplemkestark) != NT
+     || fread(log_alpha0[0], sizeof(double), NLNS, fplemkestark) != NLNS 
+     || fread(log_ne0[0], sizeof(double), NLNS, fplemkestark) != NLNS
+     || fread(log_alpha_inc[0], sizeof(double), NLNS, fplemkestark) != NLNS
+     || fread(log_ne_inc[0], sizeof(double), NLNS, fplemkestark) != NLNS
+     || fread(mp[0], sizeof(int), NLNS, fplemkestark) != NLNS
+     || fread(mne[0], sizeof(int), NLNS, fplemkestark) != NLNS
+     || fread(nline, sizeof(int), NSERIES, fplemkestark) != NSERIES)
+  { 
+     sprintf(messageStr, "Error reading LemkeStark.dat");
+     Error(ERROR_LEVEL_2, routineName, messageStr);
+  }
+  fclose(fplemkestark);
+
+  series = line->i; 
+  lne = line->j-series-1;
+  if (series >= NSERIES || lne >= NLINES || lne >= nline[series])
+  {
+    
+     sprintf(messageStr, "Error: VCS_STARK requested for unknown line");
+     Error(ERROR_LEVEL_2, routineName, messageStr);
+  }
+
+  for (i = 0; i< mp[series][lne]; i++)
+    alpha[i] = pow(10,log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i));
+  for (i = 0; i< mne[series][lne]; i++)
+    lgNe[i] = log_ne0[series][lne] + log_ne_inc[series][lne]*i;
+   
+  line->VCS_stark = malloc( sizeof(VCS_Stark));
+  line->VCS_stark->DopplerWL = matrix_double(atmos.Nspace, NWL);
+  line->VCS_stark->S = matrix_double(atmos.Nspace, NWL-1);
+  line->VCS_stark->N = NWL;
+
+  arr3d = malloc(sizeof(double**) * (mp[series][lne]-1));
+  for (i = 0; i<mp[series][lne]-1; i++) arr3d[i] = malloc(sizeof(double*) * mne[series][lne]);
+  tempWL = malloc(sizeof(double) * mp[series][lne]);
+  tempWLmp = malloc(sizeof(double) * (mp[series][lne]-1));
+  for (k = 0;  k < atmos.Nspace;  k++)
+  {
+     tempWL[0] = (1.25e-9 * pow(atmos.ne[k]*1e-6,2./3.) * alpha[0])/10 * CLIGHT / (line->lambda0 * line->atom->vbroad[k]);
+     for (i = 1; i < mp[series][lne]; i++) // start at i=1 to throw out the initial svcs which is always 0.0
+     {
+       tempWL[i]= (1.25e-9 * pow(atmos.ne[k]*1e-6,2./3.) * alpha[i])/10 * CLIGHT / (line->lambda0 * line->atom->vbroad[k]); /* WL in Angstroms then converted to voigt WL units) */
+       tempWLmp[i-1] = (tempWL[i] + tempWL[i-1])*.5;
+       for (j=0; j<mne[series][lne];j++) arr3d[i-1][j] = svcs[series][lne][i][j];
+     }
+     line->VCS_stark->DopplerWL[k][0] = tempWL[0];
+     for (i = 0; i <NWL-1; i++)
+     {
+        line->VCS_stark->DopplerWL[k][i+1] = pow(10,(double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]));
+        wlmp = (line->VCS_stark->DopplerWL[k][i+1] + line->VCS_stark->DopplerWL[k][i])*.5;
+        if (wlmp >= tempWLmp[mp[series][lne]-2]) wlmp = tempWLmp[mp[series][lne]-2]*.999;
+        line->VCS_stark->S[k][i] = pow(10,TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE)); /* 1e-6 converts m^-3 to cm^-3 */
+     }
+     
+     /* Normalize to 0.5 */
+     sum = 0;
+     for (i = 0; i< NWL-1; i++)
+     {
+       sum += (line->VCS_stark->DopplerWL[k][i+1] - line->VCS_stark->DopplerWL[k][i]) * (line->VCS_stark->S[k][i]);
+     }
+     for (i=0; i < NWL-1; i++) line->VCS_stark->S[k][i] /= (2*sum);
+  }
+  for (i = 0; i<mp[series][lne]-1; i++) free(arr3d[i]);
+  free(arr3d);
+  free(tempWL);
+  free(tempWLmp);
+}
+
+/* ------- end ---------------------------- InitLemkeStark.c -------- */
+
+double **allocate2d(int n1, int n2)
+{
+  int i;
+  double **arr, *temp1d;
+  arr = malloc( sizeof(double *) *  n1);
+  temp1d = malloc( sizeof(double) * n1 * n2);
+  for (i=0; i<n1; i++) arr[i] = &temp1d[i * n2];
+  return arr;
+}
+
+void deallocate2d(double **arr)
+{
+  free(arr[0]);
+  free(arr);
+}
+
+

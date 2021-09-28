@@ -3,8 +3,7 @@
        Version:       rh2.0
        Author:        Han Uitenbroek (huitenbroek@nso.edu)
        Last modified: Fri Feb 24 08:24:45 2012 --
-                      Mon Sept 13th Graham S. Kerr
-                      Added FIXED_POPS_FROM_FILE case to starting solution
+
        --------------------------                      ----------RH-- */
 
 /* --- General include file for Rybicki & Hummer family of radiative
@@ -100,6 +99,10 @@ void TrilinearInterp(int nX, int nY, int nZ,
                      int x0, int y0, int z0,
                      double xp, double yp, double zp,
                      double *p);
+double TriLinear(int Na, double *a_table, double a,
+                 int Nb, double *b_table, double b,
+                 int Nc, double *c_table, double c,
+                double ***f, bool_t hunt);
 void  splineCoef(int Ntable, double *xtable, double *ytable);
 void  splineEval(int N, double *x, double *y, bool_t hunt);
 void  exp_splineCoef(int Ntable, double *xtable, double *ytable,
@@ -113,6 +116,7 @@ double cubeconvol(int Nx, int Ny, double *f, double x, double y);
 
 void   GaussLeg(double x1, double x2, double *x, double *w, int n);
 double Voigt(double a, double v, double *F, enum VoigtAlgorithm algorithm);
+double ConvVoigt(double *vp, double *C, int n, double a, double v, double *F, enum VoigtAlgorithm algorithm);
 double gammln(double xx);
 
 void   w2(double dtau, double *w);

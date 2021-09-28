@@ -117,6 +117,7 @@ bool_t Metal_bf(double lambda, int Nmetal, struct Atom *metals,
 	    for (k = 0;  k < atmos.Nspace;  k++)
 	      expla[k] = exp(-hc_kla/atmos.T[k]);
 	  }
+    for (k = 0;  k < atmos.Nspace;  k++) {
 
 	  if (continuum->hydrogenic) {
 	    Z = metal->stage[continuum->j];
@@ -128,11 +129,11 @@ bool_t Metal_bf(double lambda, int Nmetal, struct Atom *metals,
 	      Gaunt_bf(lambda, n_eff, Z) / gbf_0;
 	  } else {
 	    splineCoef(continuum->Nlambda, continuum->lambda,
-		       continuum->alpha);
+		       continuum->alpha2d[k]);
 	    splineEval(1, &lambda, &alpha_la, hunt=FALSE);
 	  }
 
-	  for (k = 0;  k < atmos.Nspace;  k++) {
+	  //    for (k = 0;  k < atmos.Nspace;  k++) {
 	    gijk    = metal->nstar[i][k]/metal->nstar[j][k] * expla[k];
 	    chi[k] += alpha_la * (1.0 - expla[k]) * n[i][k];
 	    eta[k] += twohnu3_c2 * gijk * alpha_la * n[j][k];
@@ -278,7 +279,7 @@ flags passive_bb(double lambda, int nspect, int mu, bool_t to_obs,
 		  v += vproject(k, mu) / atom->vbroad[k];
 		else
 		  v -= vproject(k, mu) / atom->vbroad[k];
-	      }
+	      } 
 	      if (line->Voigt)
 		phi = Voigt(linelist[entry]->adamp[k], v, NULL,
 			    ARMSTRONG) * line->c_fraction[nc];
