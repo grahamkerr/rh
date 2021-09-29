@@ -762,9 +762,9 @@ void SetLTEQuantities_p(void)
       /* --- Compute the fixed rates and store in Cij -- ------------ */
       if (atom->Nfixed > 0) FixedRate(atom);
 
-      if (atom->NCnt == 1) {
-            readCnt_hdf5_alt(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy],atom);
-          }
+      // if (atom->NCnt == 1) {
+      //       readCnt_hdf5_alt(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy],atom);
+      //     }
     }
   }
 }

@@ -1,8 +1,8 @@
 # <<One-line atomic model description>>
   H 
 
-# Nlevel  Nline   Ncont   Nfixed  
-    6       10       5        0       
+# Nlevel  Nline   Ncont   Nfixed  Cnt?
+    6       10       5        0    0   
 
 #   E[cm^-1]    g           label[20]         stage   levelNo
 #                     '|----|----|----|----'
@@ -16,22 +16,22 @@
 # j   i       f     type  Nlambda symmetr  qcore  qwing  vdWapprx          vdWaals            radiative  Stark
 #
 # Lyman series                                                           H            He
-  1   0  4.167e-01    PRD    100    ASYMM  15.0   600.0   UNSOLD   1.000  0.000  1.000  0.000  4.70E+08  1.0E+00
-  2   0  7.919e-02    PRD     50    ASYMM  10.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  9.98E+07  1.0E+00
-  3   0  2.901e-02  VOIGT     20     SYMM   3.0   100.0   UNSOLD   1.000  0.000  1.000  0.000  3.02E+07  1.0E+00
-  4   0  1.395e-02  VOIGT     20     SYMM   3.0   100.0   UNSOLD   1.000  0.000  1.000  0.000  1.15E+07  1.0E+00
+  1   0  4.167e-01    PRD    100    ASYMM  15.0   1500.0   UNSOLD   1.000  0.000  1.000  0.000  4.70E+08  1.0E+00
+  2   0  7.919e-02    PRD     50    ASYMM  15.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  9.98E+07  1.0E+00
+  3   0  2.901e-02  VOIGT     20    ASYMM  15.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  3.02E+07  1.0E+00
+  4   0  1.395e-02  VOIGT     20    ASYMM  15.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  1.15E+07  1.0E+00
 
 # Balmer series												 
-  2   1  6.414e-01  VOIGT     70    ASYMM   3.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  5.701E+08  1.0E+00
-  3   1  1.195e-01  VOIGT     40    ASYMM   3.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  5.004E+08  1.0E+00
-  4   1  4.471e-02  VOIGT     40     SYMM   3.0   250.0   UNSOLD   1.000  0.000  1.000  0.000  4.818E+08  1.0E+00
+  2   1  6.414e-01  VOIGT_VCS_STARK    240    ASYMM   15.0   3000.0   UNSOLD   1.000  0.000  1.000  0.000  5.701E+08  0.0E+00
+  3   1  1.195e-01  VOIGT_VCS_STARK    240    ASYMM   15.0   3000.0   UNSOLD   1.000  0.000  1.000  0.000  5.004E+08  0.0E+00
+  4   1  4.471e-02  VOIGT_VCS_STARK    240    ASYMM   15.0   3000.0   UNSOLD   1.000  0.000  1.000  0.000  4.818E+08  0.0E+00
 
 # Paschen series
-  3   2  8.431e-01  VOIGT     20     SYMM   2.0    30.0   UNSOLD   1.000  0.000  1.000  0.000  1.301E+08  1.0E+00
-  4   2  1.508e-01  VOIGT     20     SYMM   2.0    30.0   UNSOLD   1.000  0.000  1.000  0.000  1.115e+08  1.0E+00
+  3   2  8.431e-01  VOIGT_VCS_STARK     20     ASYMM   15.0    250.0   UNSOLD   1.000  0.000  1.000  0.000  1.301E+08  0.0E+00
+  4   2  1.508e-01  VOIGT_VCS_STARK     20     ASYMM   15.0    250.0   UNSOLD   1.000  0.000  1.000  0.000  1.115e+08  0.0E+00
 
 # Brackett series
-  4   3  1.039e+00  VOIGT     20     SYMM   1.0    30.0   UNSOLD   1.000  0.000  1.000  0.000  4.177e+07  1.0E+00
+  4   3  1.039e+00  VOIGT     20     ASYMM   15.0    250.0   UNSOLD   1.000  0.000  1.000  0.000  4.177e+07  1.0E+00
 
 # Photoionization Cross Sectionss
 
