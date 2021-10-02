@@ -179,13 +179,47 @@ void Stark(AtomicLine *line, double *GStark)
   double C4, C, Cm, m_electron = M_ELECTRON/AMU, cStark23, cStark,
          neff_u, neff_l, m_atom_avg = AVERAGE_ATOMIC_WEIGHT, vrel,
          E_Rydberg;
+  double aa_0 = 1.13807,aa_1 = -1.54913,aa_2 = 0.13423,ab_0 = 1.36331,ab_1 = -1.62649,ab_2 = 0.15218,gstark_aa;
   Atom  *atom = line->atom;
 
   if (line->cStark < 0.0) {
     cStark = fabs(line->cStark);
     for (k = 0;  k < atmos.Nspace;  k++)
       GStark[k] = cStark * atmos.ne[k];
-  } else {
+  } else if (strcmp(atom->ID,"MG") == 0 && atom->stage[line->i] == 1) {
+
+    /* -- Modified by Graham Kerr, based on Yj Zhu's implementation (should now work
+          for a Mg atom of any size, selecting only Mg II, and only the transitions
+          with correct delta-E):
+                 See Zhu et al 2019, ApJ 879, 19 for details.
+                 https://ui.adsabs.harvard.edu/abs/2019ApJ...879...19Z/abstract 
+          For the Mg II h & k resonance lines, and subordinate lines, 
+          the quadratic Stark effect is modelled in a more accurate manner, 
+          nased on the Stark-B database. 
+          Stark broadening full width Gamma for Mg II h & k and triplets in angular 
+          frequency from semi-classical calculation results refered to  Sahal-Bréchot,
+           S., Dimitrijević, M.S., Moreau N., 2018. STARK-B database, [online]
+           .http://stark-b.obspm.fr [August 27, 2018]. Observatory of Paris, LERMA
+           and Astronomical Observatory of Belgrade */
+        if ((atom->E[line->j]-atom->E[line->i])*CM_TO_M/(HPLANCK * CLIGHT) > 35000.00 && (atom->E[line->j]-atom->E[line->i])*CM_TO_M/(HPLANCK * CLIGHT) < 36000.00) { 
+          for (k = 0;  k < atmos.Nspace;  k++) {
+              gstark_aa = pow(10,(aa_0 + aa_1*log10(atmos.T[k]) + aa_2*(pow(log10(atmos.T[k]),2))) )*atmos.ne[k]/1.0e21 / 1e10;
+              GStark[k] = 2 * PI * CLIGHT * gstark_aa / pow(2798.7/1e10,2);
+              // printf("\n\n>>>> In BROAD.C... improved stark broadening for %2s, ion %d, trans j=%d --> i=%d", atom->ID,atom->stage[line->i]+1, line->j, line->i);
+              // printf("\n.... %20s ----> %20s",atom->label[line->i],atom->label[line->j]);
+          }
+        }
+        else if ((atom->E[line->j]-atom->E[line->i])*CM_TO_M/(HPLANCK * CLIGHT) > 71000.00 && (atom->E[line->j]-atom->E[line->i])*CM_TO_M/(HPLANCK * CLIGHT) < 72000.00) { 
+          for (k = 0;  k < atmos.Nspace;  k++) {
+              gstark_aa = pow(10,(ab_0 + ab_1*log10(atmos.T[k]) + ab_2*(pow(log10(atmos.T[k]),2))) )*atmos.ne[k]/1.0e21 / 1e10;
+              GStark[k] = 2 * PI * CLIGHT * gstark_aa / pow(2796.3/1e10,2);
+              // printf("\n\n>>>> In BROAD.C... improved stark broadening for %2s, ion %d, trans j=%d --> i=%d", atom->ID,atom->stage[line->i]+1, line->j, line->i);
+              // printf("\n.... %20s ----> %20s",atom->label[line->i],atom->label[line->j]);
+          }          
+        }
+      }  
+      else{
+
     /* --- Constants for relative velocity. We assume that nion = ne
            (see Gray), and that the average atomic weight of ionic
            perturbers is given by AVERAGE_ATOMIC_WEIGHT. -- --------- */
@@ -222,6 +256,7 @@ void Stark(AtomicLine *line, double *GStark)
     }
   }
 }
+
 /* ------- end ---------------------------- Stark.c ----------------- */
 
 /* ------- begin -------------------------- StarkLinear.c ----------- */
