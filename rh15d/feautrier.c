@@ -95,6 +95,10 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
     r0 = 0.0;
     h0 = geometry.Itop[nspect][mu];
     break;
+  case IRRADIATED_INTP:
+    r0 = 0.0;
+    h0 = geometry.Itop[nspect][mu];
+    break;
   case REFLECTIVE:
     r0 = 1.0;
     h0 = 0.0;
@@ -122,6 +126,10 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
     rN = 0.0;
     hN = geometry.Ibottom[nspect][mu];
     break;
+  case IRRADIATED_INTP:
+      sprintf(messageStr, "Boundary condition not implemented: %d",
+              geometry.vboundary[BOTTOM]);
+      Error(ERROR_LEVEL_2, routineName, messageStr);
   case REFLECTIVE:
     rN = 1.0;
     hN = 0.0;
