@@ -34,6 +34,7 @@ typedef struct {
   char     *file_name;
   hid_t     ncid,     nx_id,    ny_id,    nz_id,    nhyd_id,     z_varid;
   hid_t     T_varid,  ne_varid, vz_varid, nh_varid, vturb_varid;
+  hid_t     H_popsin_varid, He_popsin_varid, Ca_popsin_varid;
   hid_t     Bx_varid, By_varid, Bz_varid;
   size_t    nx,       ny,       nz,       NHydr;
   double   *x, *y;
@@ -76,6 +77,10 @@ void convertScales(Atmosphere *atmos, Geometry *geometry);
 void setTcut(Atmosphere *atmos, Geometry *geometry, double Tmax);
 void realloc_ndep(Atmosphere *atmos, Geometry *geometry);
 void depth_refine(Atmosphere *atmos, Geometry *geometry, double tmax);
+void readPopsin(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
+                Input_Atmos_file *infile, Atom *atom);
+void readPopsin_hdf5(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
+                Input_Atmos_file *infile, Atom *atom);
 
 /* --- Formal solution related --                      -------------- */
 double Feautrier(int nspect, int mu, double *chi, double *S,

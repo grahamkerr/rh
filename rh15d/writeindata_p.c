@@ -145,6 +145,9 @@ void init_hdf5_indata_new(void)
   case ESCAPE_PROBABILITY:
     strcpy(startJ, "ESCAPE_PROBABILITY");
     break;
+  case FIXED_POPS_FROM_FILE:
+    strcpy(startJ, "FIXED_POPS_FROM_FILE");
+    break;
   case NEW_J:
     strcpy(startJ, "NEW_J");
     break;

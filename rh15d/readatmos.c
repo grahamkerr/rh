@@ -114,6 +114,12 @@ void close_atmos(Atmosphere *atmos, Geometry *geometry,
     }
 }
 
+void readPopsin(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
+                Input_Atmos_file *infile, Atom *atom) {
+      
+      readPopsin_hdf5(xi, yi, atmos, geometry, infile, atom);
+
+}
 
 void setTcut(Atmosphere *atmos, Geometry *geometry, double Tmax) {
   /* Find the point where temperature (in TR region) gets below Tmax,
