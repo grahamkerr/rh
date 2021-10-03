@@ -88,16 +88,22 @@ void statEquil(Atom *atom, int isum)
     }
     /* --- Close homogeneous set with particle conservation-- ------- */
 
-    n_k[i_eliminate] = atom->ntotal[k];
-    for (j = 0;  j < Nlevel;  j++) Gamma_k[i_eliminate][j] = 1.0;
+    int dosolvelineq = 1;
+    if (atom->initial_solution == FIXED_POPS_FROM_FILE) {
+       dosolvelineq = 0;
+    } else {
+       n_k[i_eliminate] = atom->ntotal[k];
+       for (j = 0;  j < Nlevel;  j++) Gamma_k[i_eliminate][j] = 1.0;
+    }
 
     /* --- Solve for new population numbers at location k -- -------- */
-
-    SolveLinearEq(Nlevel, Gamma_k, n_k, TRUE);
-    if (mpi.stop) {
-      free(n_k);
-      freeMatrix((void **) Gamma_k);
-      return; /* Get out if there is a singular matrix */
+    if (dosolvelineq){
+        SolveLinearEq(Nlevel, Gamma_k, n_k, TRUE);
+        if (mpi.stop) {
+          free(n_k);
+          freeMatrix((void **) Gamma_k);
+          return; /* Get out if there is a singular matrix */
+        }
     }
 
     for (i = 0;  i < Nlevel;  i++) atom->n[i][k] = n_k[i];
@@ -201,18 +207,28 @@ double updatePopulations(int niter)
   for (nact = 0;  nact < atmos.Nactiveatom;  nact++) {
     atom = atmos.activeatoms[nact];
 
-    statEquil(atom, input.isum);
-    if (mpi.stop)  return 1.; /* Get out if there is a singular matrix */
+    int doupdatepops = 1;
 
-    accel = Accelerate(atom->Ng_n, atom->n[0]);
-    if (mpi.stop)  return 1.; 
+    if (atom->initial_solution == FIXED_POPS_FROM_FILE) {
+        doupdatepops = 0;
+       }
 
-    sprintf(messageStr, " %s,", atom->ID);
-    dpops = MaxChange(atom->Ng_n, messageStr, quiet=FALSE);
-    Error(MESSAGE, NULL, (accel) ? " (accelerated)\n" : "\n");
+     if (doupdatepops) {
 
-    dpopsmax = MAX(dpops, dpopsmax);
+         statEquil(atom, input.isum);
+         if (mpi.stop)  return 1.; /* Get out if there is a singular matrix */
+
+         accel = Accelerate(atom->Ng_n, atom->n[0]);
+         if (mpi.stop)  return 1.; 
+
+         sprintf(messageStr, " %s,", atom->ID);
+         dpops = MaxChange(atom->Ng_n, messageStr, quiet=FALSE);
+         Error(MESSAGE, NULL, (accel) ? " (accelerated)\n" : "\n");
+
+         dpopsmax = MAX(dpops, dpopsmax);
+     }
   }
+
   /* --- Update active molecules --                    -------------- */
 
   for (nact = 0;  nact < atmos.Nactivemol;  nact++) {

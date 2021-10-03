@@ -41,6 +41,7 @@
 #include "error.h"
 #include "inputs.h"
 #include "parallel.h"
+#include "geometry.h"
 
 #define IMU_FILE_TEMPLATE "scratch/Imu_p%d.dat"
 
@@ -57,7 +58,10 @@ extern CommandLine commandline;
 extern char messageStr[];
 extern MPI_data mpi;
 extern enum Topology topology;
-
+extern Geometry geometry;
+extern Input_Atmos_file infile;
+// Geometry geometry;
+// Input_Atmos_file infile;
 
 /* ------- begin -------------------------- initSolution_alloc.c ---- */
 void initSolution_alloc(void) {
@@ -623,6 +627,29 @@ void initSolution_p(void)
     case OLD_POPULATIONS:
       readPopulations(atom);
       break;
+
+    case FIXED_POPS_FROM_FILE:
+      printf("\n\n>>>> Atom %s is using FIXED_POPS_FROM_FILE",atom->ID);
+      readPopsin(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy], &atmos, &geometry,
+                  &infile, atom);
+       
+       // printf("\nThe population of level 1 is \n\n");
+       //   for(k=0;k<atmos.Nspace;k++) {
+       //    printf("\n .... %lf\n\n", atom->n[0][k]);
+       //    }
+       // printf("\nThe population of level 2 is \n\n");
+       //   for(k=0;k<atmos.Nspace;k++) {
+       //    printf("\n .... %lf\n\n", atom->n[1][k]);
+       //    }
+       // printf("\nThe population of level 3 is \n\n");
+       //   for(k=0;k<atmos.Nspace;k++) {
+       //    printf("\n .... %lf\n\n", atom->n[2][k]);
+       //    }
+       // printf("\nThe population of level 4 is \n\n");
+       //   for(k=0;k<atmos.Nspace;k++) {
+       //    printf("\n .... %lf\n\n", atom->n[3][k]);
+       //    }
+       break;
 
     default:;
     break;
