@@ -192,6 +192,8 @@ void readInput(char *input_string)
      &input.allow_passive_bb, setboolValue},
 
     /* --- 1.5D version related inputs go here --     --------------- */
+    {"EMISTAB_FILE", "../Atmos/emiss_grid.dat", FALSE, KEYWORD_OPTIONAL, input.emistab_file,
+     setcharValue},
     {"SNAPSHOT", "0", FALSE, KEYWORD_OPTIONAL, &input.p15d_nt,
      setintValue},
     {"X_START", "0", FALSE, KEYWORD_OPTIONAL, &input.p15d_x0,

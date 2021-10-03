@@ -31,6 +31,7 @@
 #include "geometry.h"
 #include "spectrum.h"
 #include "parallel.h"
+#include "error.h"
 
 
 /* --- Function prototypes --                          -------------- */
@@ -42,6 +43,7 @@ extern Geometry geometry;
 extern Atmosphere atmos;
 extern Spectrum spectrum;
 extern MPI_data mpi;
+extern char messageStr[];
 
 
 /* ------- begin -------------------------- PiecewiseStokes.c ------- */
@@ -50,6 +52,7 @@ void PiecewiseStokes(int nspect, int mu, bool_t to_obs,
 		     double *chi_I, double **S, double **I, double *Psi)
 {
   register int k, n, m;
+  const char routineName[] = "PiecewiseStokes";
 
   int    Ndep = geometry.Ndep, k_start, k_end, dk;
   double dtau_uw, dtau_dw = 0.0, dS_uw[4], dS_dw[4], c1, c2, w[3],
@@ -87,6 +90,15 @@ void PiecewiseStokes(int nspect, int mu, bool_t to_obs,
     case IRRADIATED:
       I_upw[0] = geometry.Ibottom[nspect][mu];
       for (n = 1;  n < 4;  n++) I_upw[n] = 0.0;
+      break;
+    case REFLECTIVE:
+      sprintf(messageStr, "Boundary condition not implemented: %d",
+              geometry.vboundary[BOTTOM]);
+      Error(ERROR_LEVEL_2, routineName, messageStr);
+    case IRRADIATED_INTP:
+      sprintf(messageStr, "Boundary condition not implemented: %d",
+              geometry.vboundary[BOTTOM]);
+      Error(ERROR_LEVEL_2, routineName, messageStr);
     }
   } else {
     switch (geometry.vboundary[TOP]) {
@@ -96,6 +108,19 @@ void PiecewiseStokes(int nspect, int mu, bool_t to_obs,
     case IRRADIATED:
       I_upw[0] = geometry.Itop[nspect][mu];
       for (n = 1;  n < 4;  n++) I_upw[n] = 0.0;
+      break;
+    case IRRADIATED_INTP:
+      I_upw[0] = geometry.Itop[nspect][mu];
+      for (n = 1;  n < 4;  n++) I_upw[n] = 0.0;
+      break;
+    case REFLECTIVE:
+      sprintf(messageStr, "Boundary condition not implemented: %d",
+              geometry.vboundary[TOP]);
+      Error(ERROR_LEVEL_2, routineName, messageStr);
+    case THERMALIZED:
+      sprintf(messageStr, "Boundary condition not implemented: %d",
+              geometry.vboundary[TOP]);
+      Error(ERROR_LEVEL_2, routineName, messageStr);
     }
   }
   for (n = 0;  n < 4;  n++)

@@ -399,4 +399,7 @@ void close_hdf5_atmos(Atmosphere *atmos, Geometry *geometry,
   free(infile->x);
   free(geometry->xscale);
   free(geometry->yscale);
+  if (geometry->vboundary[TOP] == 4) {
+            free(geometry->Itop);
+     }
 }
