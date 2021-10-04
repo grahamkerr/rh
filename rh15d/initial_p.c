@@ -629,9 +629,19 @@ void initSolution_p(void)
       break;
 
     case FIXED_POPS_FROM_FILE:
-      printf("\n\n>>>> Atom %s is using FIXED_POPS_FROM_FILE",atom->ID);
-      readPopsin(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy], &atmos, &geometry,
-                  &infile, atom);
+
+      
+      if ((strcmp(atom->ID,"H ") == 0)||(strcmp(atom->ID,"HE") == 0)||(strcmp(atom->ID,"CA") == 0)){
+      	  printf("\n\n>>>> Atom %s is using FIXED_POPS_FROM_FILE\n",atom->ID);
+          readPopsin(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy], &atmos, &geometry,
+                     &infile, atom);
+        } else{
+	      sprintf(messageStr, "Starting solution FIXED_POPS_FROM_FILE can only be used with H, He, or Ca, for now.",
+		          status);
+	       Error(ERROR_LEVEL_2, routineName, messageStr);
+         } 
+      break;
+     
        
        // printf("\nThe population of level 1 is \n\n");
        //   for(k=0;k<atmos.Nspace;k++) {
@@ -649,7 +659,7 @@ void initSolution_p(void)
        //   for(k=0;k<atmos.Nspace;k++) {
        //    printf("\n .... %lf\n\n", atom->n[3][k]);
        //    }
-       break;
+  
 
     default:;
     break;
