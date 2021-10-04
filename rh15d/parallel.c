@@ -116,9 +116,13 @@ void closeParallelIO(bool_t run_ray, bool_t writej) {
   if (!run_ray) {
     close_hdf5_indata();
   }
+  // printf("\n\n>>>>> ABOUT TO START CLOSING...\n");
   close_atmos(&atmos, &geometry, &infile);
+  // printf("\n.... closed close_atmos()\n");
   close_hdf5_aux();
+  // printf("\n.... closed close_hdf5_aux\n");
   close_hdf5_ray();
+  // printf("\n.... closed close_hdf5_ray\n");
 
   //free(io.atom_file_pos);
   free(mpi.niter);

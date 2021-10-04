@@ -193,6 +193,11 @@ void init_hdf5_atmos(Atmosphere *atmos, Geometry *geometry,
   atmos->chi_b = NULL;
   atmos->eta_b = NULL;
   atmos->sca_b = NULL;
+
+  // infile->H_popsin_varid = -1;
+  // infile->He_popsin_varid = -1;
+  // infile->Ca_popsin_varid = -1;
+
 }
 /* ------- end ---------------------------- init_hdf5_atmos  -------- */
 
@@ -375,9 +380,9 @@ void close_hdf5_atmos(Atmosphere *atmos, Geometry *geometry,
     Input_Atmos_file *infile) {
   /* Closes the HDF5 file and frees memory */
   int ierror;
-  int nact;
+  int nact, counter;
   Atom *atom;
-  
+
   /* Close the file. */
   ierror = H5Dclose(infile->z_varid);
   ierror = H5Dclose(infile->T_varid);
@@ -391,20 +396,33 @@ void close_hdf5_atmos(Atmosphere *atmos, Geometry *geometry,
   }
   if (infile->vturb_varid != -1) ierror = H5Dclose(infile->vturb_varid);
 
-  for (nact = 0;  nact < atmos->Nactiveatom;  nact++) {
-      atom = atmos->activeatoms[nact];
-      if (atom->initial_solution == FIXED_POPS_FROM_FILE) {
-          if (strcmp(atom->ID,"H") == 0){
-              ierror = H5Dclose(infile->H_popsin_varid);
-              }
-          if (strcmp(atom->ID,"HE") == 0){
-              ierror = H5Dclose(infile->He_popsin_varid);
-              }
-          if (strcmp(atom->ID,"CA") == 0){
-              ierror = H5Dclose(infile->Ca_popsin_varid);
-              }    
-         }
-   }
+  // for (nact = 0;  nact < atmos->Nactiveatom;  nact++) {
+  //     atom = atmos->activeatoms[nact];
+  //     if (atom->initial_solution == FIXED_POPS_FROM_FILE) {
+  //         if (strcmp(atom->ID,"H") == 0){
+  //             ierror = H5Dclose(infile->H_popsin_varid);
+  //             free(atom->n);
+  //             printf("\n>>>> close infile->Hpopsin");
+  //             counter = counter+1;
+  //             }
+  //         else if (strcmp(atom->ID,"HE") == 0){
+  //             ierror = H5Dclose(infile->He_popsin_varid);
+  //             counter = counter+1;
+  //             free(atom->n);
+  //             printf("\n>>>> close infile->HEpopsin");
+  //             }
+  //         else if (strcmp(atom->ID,"CA") == 0){
+  //             ierror = H5Dclose(infile->Ca_popsin_varid);
+  //             counter = counter+1;
+  //             free(atom->n);
+  //             printf("\n>>>> close infile->CApopsin");
+  //             }    
+  //        }
+  //  }
+
+  // if (infile->H_popsin_varid != -1) ierror = H5Dclose(infile->H_popsin_varid);
+  // if (infile->He_popsin_varid != -1) ierror = H5Dclose(infile->He_popsin_varid);
+  // if (infile->Ca_popsin_varid != -1) ierror = H5Dclose(infile->Ca_popsin_varid);
 
   ierror = H5Fclose(infile->ncid);
 
@@ -414,6 +432,9 @@ void close_hdf5_atmos(Atmosphere *atmos, Geometry *geometry,
   free(atmos->ne);
   free(atmos->vturb);
   free(atmos->nHtot);
+  // if (counter > 0){
+  //    free(atom->n);
+  // }
   free(geometry->vel);
   free(geometry->height);
   free(infile->y);
