@@ -636,7 +636,7 @@ void initSolution_p(void)
           readPopsin(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy], &atmos, &geometry,
                      &infile, atom);
         } else{
-	      sprintf(messageStr, "Starting solution FIXED_POPS_FROM_FILE can only be used with H, He, or Ca, for now.",
+	      sprintf(messageStr, "\n>>>> Starting solution FIXED_POPS_FROM_FILE can only be used with H, He, or Ca, for now <<<<\n",
 		          status);
 	       Error(ERROR_LEVEL_2, routineName, messageStr);
          } 

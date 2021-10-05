@@ -741,9 +741,14 @@ void SetLTEQuantities_p(void)
 /* This is the same as SetLTEQuantities, but doesn't close the atom files  */
 {
   register int n;
-
+  int include_cnt;
+  const char routineName[] = "SetLTEQuantities_p";
+  hid_t      ncid;
   bool_t Debeye = TRUE;
   Atom *atom;
+  // Input_Atmos_file *infile;
+  ncid = infile.ncid;
+
 
   for (n = 0;  n < atmos.Natom;  n++) {
     atom = &atmos.atoms[n];
@@ -760,6 +765,23 @@ void SetLTEQuantities_p(void)
 
       /* --- Compute the fixed rates and store in Cij -- ------------ */
       if (atom->Nfixed > 0) FixedRate(atom);
+
+      /* --- Add nonthermal rates, input from atmosphere file 
+             Currently only set up for H, but extendable for any
+             species by adapting hdf5Cntin.c */
+      if (strcmp(atom->ID,"HE") == 0) {
+            if (H5LTfind_attribute(ncid, include_cnt_he_NAME)) {
+               if ((H5LTget_attribute_int(ncid, "/", include_cnt_he_NAME, &include_cnt)) < 0) HERR(routineName);
+               } else {
+                      include_cnt = 0;
+                 }
+
+            if (include_cnt==1){
+               readCnt_hdf5(mpi.xnum[mpi.ix],mpi.ynum[mpi.iy],atom);
+               printf("\n\n... Non-Thermal Collisional Rates for %2s added to thermal rates\n",atom->ID);
+            }         
+      }
+
     }
   }
 }

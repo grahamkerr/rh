@@ -35,11 +35,16 @@
 #define  BBOT_NAME  "boundary_bottom"
 #define  BTOP_NAME  "boundary_top"
 
-/* Definitions for readpopulations_hd5f */
+/* Definitions for readPopsin_hdf5 */
 /* Added by Graham Kerr */
 #define H_POPSIN_NAME "H_popsin"
 #define HE_POPSIN_NAME "He_popsin"
 #define CA_POPSIN_NAME "Ca_popsin"
+
+/* Definitions for readCnt_hdf5 */
+/* Added by Graham Kerr */
+#define He_CNT_NAME "He_Cnt"
+#define include_cnt_he_NAME  "include_cnt_he"
 
 /* Definitions for background_p */
 #define  FILE_EXT ".dat"
