@@ -75,13 +75,11 @@ void ReadEmisTab(Atmosphere *atmos, Spectrum *spectrum, Geometry *geometry)
   unsigned int Ndep = geometry->Ndep;
   unsigned int Nrays = geometry->Nrays;
 
+   // printf("\ngeometry->Ndep = %d",Ndep);
+   // printf("\nmax T = %f",atmos->T[0]);
+   // printf("\nmax ne = %f",atmos->ne[0]);
 
-  // printf("\n>>>> The file in input.emistab_file is %s\n",input.emistab_file);
 
-//if ((fp = fopen("../Atmos/emiss_grid.dat", "r")) == NULL) {
- //   sprintf(messageStr, "Unable to open input file %s", "emiss_grid.dat");
-  //  Error(ERROR_LEVEL_2, routineName, messageStr);
-  //}
 
 if ((fp = fopen(input.emistab_file, "r")) == NULL) {
     sprintf(messageStr, "Unable to open input file %s", "emiss_grid.dat");
@@ -238,7 +236,6 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
            geometry->Itop[i][j] = int_summed[i] / geometry->muz[j];
       }
   }
-
 
 /* Write out the intensity and wavelength to a file */
 /*  fptr = fopen("int_summed.dat","wb");

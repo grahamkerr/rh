@@ -24,7 +24,7 @@
 /* --- Function prototypes --                          -------------- */
 void overlord(void);
 void drone(void);
-void ReadEmisTab(Atmosphere *atmos, Spectrum *spectrum, Geometry *geometry);
+// void ReadEmisTab(Atmosphere *atmos, Spectrum *spectrum, Geometry *geometry);
 
 
 /* --- Global variables --                             -------------- */
@@ -216,9 +216,9 @@ void drone(void) {
 
         /* --- Read the emissivity table and compute the irradiating spectrum --- */
         /* --- Added by Graham Kerr                                           --- */
-        if (geometry.vboundary[TOP] == 4) {
-            ReadEmisTab(&atmos, &spectrum, &geometry);
-           }
+        // if (geometry.vboundary[TOP] == 4) {
+        //     ReadEmisTab(&atmos, &spectrum, &geometry);
+        //    }
 
         /* --- Calculate background opacities --             ------------- */
         Background_p(write_analyze_output=TRUE, equilibria_only=FALSE);
