@@ -16,6 +16,7 @@
 #include "atmos.h"
 #include "geometry.h"
 #include "constant.h"
+#include "spectrum.h"
 #include "background.h"
 #include "error.h"
 #include "inputs.h"
@@ -31,6 +32,10 @@
 extern MPI_data mpi;
 extern InputData input;
 extern char messageStr[];
+
+void ReadEmisTab(Atmosphere *atmos, Spectrum *spectrum, Geometry *geometry);
+
+Spectrum spectrum;
 
 
 /* ------- begin --------------------------   init_hdf5_atmos   ----- */
@@ -235,8 +240,26 @@ void readAtmos_hdf5(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
                                NULL, count, NULL)) < 0) HERR(routineName);
   if ((H5Dread(infile->T_varid, H5T_NATIVE_DOUBLE, memspace_id, dataspace_id,
 	      H5P_DEFAULT, atmos->T)) < 0) HERR(routineName);
+  // if (( H5Sclose(dataspace_id) ) < 0) HERR(routineName);
+  // if (( H5Sclose(memspace_id) ) < 0) HERR(routineName);
+
+  /*Graham Kerr adding the following... this will read some variables needed to 
+    compute the irradiation from the corona/TR, who's cells are discarded when
+    using Tcut. If we read those in there, perform the operations needed for 
+    interpolating the emissivity grid for irradiation, and then run the Tcut 
+    sections everything should work out... I think... */
+  if (input.solve_ne == NONE) {
+      if ((ierror = H5Dread(infile->ne_varid, H5T_NATIVE_DOUBLE, memspace_id,
+                  dataspace_id, H5P_DEFAULT, atmos->ne)) < 0) HERR(routineName);
+  }
   if (( H5Sclose(dataspace_id) ) < 0) HERR(routineName);
   if (( H5Sclose(memspace_id) ) < 0) HERR(routineName);
+  if (geometry->vboundary[TOP] == 4) {
+            ReadEmisTab(atmos, &spectrum, geometry);
+           }
+  /* ... ending Graham Kerr's mods. Temperature and electron density are re-read 
+     below */         
+
   /* Finds z value for Tmax cut, redefines Nspace, reallocates arrays */
   /* Tiago: not using this at the moment, only z cut in depth_refine */
   if (input.p15d_zcut) {
