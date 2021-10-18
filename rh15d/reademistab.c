@@ -236,7 +236,10 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
            geometry->Itop[i][j] = int_summed[i] / geometry->muz[j];
       }
   }
-
+  
+  // for (i = 0; i<Nspect; i++){
+  //      printf("\nlambda = %f A ; Itop = %.30f SI", spectrum->lambda[i]*10.0, int_summed[i]);
+  // }  
 /* Write out the intensity and wavelength to a file */
 /*  fptr = fopen("int_summed.dat","wb");
   fwrite(int_summed, sizeof(double), Nspect, fptr);
