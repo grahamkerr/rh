@@ -59,8 +59,8 @@ void init_hdf5_ray_new(void)
 /* Creates the file for the ray */
 {
   const char routineName[] = "init_hdf5_ray_new";
-  int     k;
-  hid_t   plist, ncid, file_dspace, id_x, id_y, id_z, id_wave, id_wave_sel;
+  int     k, ii;
+  hid_t   plist, ncid, file_dspace, id_x, id_y, id_z, id_wave, id_wave_sel, id_waveirrnat;
   hsize_t dims[4];
   bool_t  write_xtra;
   double *lambda_air, *wave_selected, *tmp;
@@ -134,6 +134,7 @@ void init_hdf5_ray_new(void)
         wave_selected[k] = spectrum.lambda[io.ray_wave_idx[k]];
   }
   if (( id_wave = H5Dopen2(ncid, WAVE_NAME, H5P_DEFAULT)) < 0) HERR(routineName);
+
   if (write_xtra) {
     dims[0] = io.ray_nwave_sel;
     if (( H5LTmake_dataset(ncid, WAVE_SEL_IDX, 1, dims, H5T_NATIVE_INT,
@@ -144,6 +145,11 @@ void init_hdf5_ray_new(void)
                                  H5P_DEFAULT)) < 0) HERR(routineName);
   }
   free(wave_selected);
+
+  dims[0] = spectrum.Nspectirrnat;
+  if (( H5LTmake_dataset(ncid, WAVE_IRRNAT_NAME, 1, dims, H5T_NATIVE_DOUBLE,
+                           spectrum.lambda_irrnat) ) < 0) HERR(routineName);
+  if (( id_waveirrnat = H5Dopen2(ncid, WAVE_IRRNAT_NAME, H5P_DEFAULT)) < 0) HERR(routineName);
 
   /* Create dataspace with same fill value as netcdf */
   dims[0] = mpi.nx;
@@ -163,7 +169,14 @@ void init_hdf5_ray_new(void)
   if (( H5DSattach_scale(io.ray_int_var, id_x, 0)) < 0) HERR(routineName);
   if (( H5DSattach_scale(io.ray_int_var, id_y, 1)) < 0) HERR(routineName);
   if (( H5DSattach_scale(io.ray_int_var, id_wave, 2)) < 0) HERR(routineName);
-
+  if (( io.ray_intirr_var = H5Dcreate(ncid, INTIRR_NAME, H5T_NATIVE_FLOAT,
+            file_dspace, H5P_DEFAULT, plist,
+            H5P_DEFAULT)) < 0) HERR(routineName);
+  /* Attach dimension scales */
+  if (( H5DSattach_scale(io.ray_intirr_var, id_x, 0)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.ray_intirr_var, id_y, 1)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.ray_intirr_var, id_wave, 2)) < 0) HERR(routineName);
+  
 
   /* Other Stokes parameters, if available */
   if (atmos.Stokes || input.backgr_pol) {
@@ -200,6 +213,25 @@ void init_hdf5_ray_new(void)
     if (( H5DSattach_scale(io.ray_tau1_var, id_y, 1)) < 0) HERR(routineName);
     if (( H5DSattach_scale(io.ray_tau1_var, id_wave, 2)) < 0) HERR(routineName);
   }
+
+  dims[0] = mpi.nx;
+  dims[1] = mpi.ny;
+  dims[2] = spectrum.Nspectirrnat;
+  if (( file_dspace = H5Screate_simple(3, dims, NULL) ) < 0) HERR(routineName);
+  if (( plist = H5Pcreate(H5P_DATASET_CREATE) ) < 0) HERR(routineName);
+  if (( H5Pset_fill_value(plist, H5T_NATIVE_FLOAT, &FILLVALUE) ) < 0)
+    HERR(routineName);
+  if (( H5Pset_alloc_time(plist, H5D_ALLOC_TIME_EARLY) ) < 0) HERR(routineName);
+  if (( H5Pset_fill_time(plist, H5D_FILL_TIME_ALLOC) ) < 0) HERR(routineName);
+  /* Intensity */
+  if (( io.ray_intirrnat_var = H5Dcreate(ncid, INTIRRNAT_NAME, H5T_NATIVE_FLOAT,
+            file_dspace, H5P_DEFAULT, plist,
+            H5P_DEFAULT)) < 0) HERR(routineName);
+  /* Attach dimension scales */
+  if (( H5DSattach_scale(io.ray_intirrnat_var, id_x, 0)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.ray_intirrnat_var, id_y, 1)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.ray_intirrnat_var, id_waveirrnat, 2)) < 0) HERR(routineName);
+
   if (write_xtra) {
     dims[0] = mpi.nx;
     dims[1] = mpi.ny;
@@ -317,6 +349,7 @@ void init_hdf5_ray_new(void)
   if (( H5Dclose(id_y) ) < 0) HERR(routineName);
   if (( H5Dclose(id_z) ) < 0) HERR(routineName);
   if (( H5Dclose(id_wave) ) < 0) HERR(routineName);
+  if (( H5Dclose(id_waveirrnat) ) < 0) HERR(routineName);
   if (write_xtra) if (( H5Dclose(id_wave_sel) ) < 0) HERR(routineName);
 
   /* Flush ensures file is created in case of crash */
@@ -366,6 +399,10 @@ void init_hdf5_ray_existing(void)
   /* --- Open datasets collectively ---*/
   if (( io.ray_int_var = H5Dopen(ncid, INT_NAME, H5P_DEFAULT) ) < 0)
     HERR(routineName);
+  if (( io.ray_intirr_var = H5Dopen(ncid, INTIRR_NAME, H5P_DEFAULT) ) < 0)
+    HERR(routineName);
+  if (( io.ray_intirrnat_var = H5Dopen(ncid, INTIRRNAT_NAME, H5P_DEFAULT) ) < 0)
+    HERR(routineName);
   if (input.p15d_wtau) {
     if (( io.ray_tau1_var = H5Dopen(ncid, TAU1_NAME, H5P_DEFAULT) ) < 0)
       HERR(routineName);
@@ -403,6 +440,8 @@ void close_hdf5_ray(void) {
   write_xtra = (io.ray_nwave_sel > 0);
   /* Close all datasets */
   if (( H5Dclose(io.ray_int_var) ) < 0) HERR(routineName);
+  if (( H5Dclose(io.ray_intirr_var) ) < 0) HERR(routineName);
+  if (( H5Dclose(io.ray_intirrnat_var) ) < 0) HERR(routineName);
   if (atmos.Stokes || input.backgr_pol) {
     if (( H5Dclose(io.ray_stokes_q_var) ) < 0) HERR(routineName);
     if (( H5Dclose(io.ray_stokes_u_var) ) < 0) HERR(routineName);
@@ -428,7 +467,7 @@ void close_hdf5_ray(void) {
 void writeRay(void) {
   /* Writes ray data to file. */
   const char routineName[] = "writeRay";
-  int        idx, k, l, nspect;
+  int        idx, k, l, nspect, i;
   double    *J;
   float    **chi, **S, **sca, *tau_one, tau_cur, tau_prev, tmp, *chi_tmp;
   float    **Jnu;
@@ -437,7 +476,7 @@ void writeRay(void) {
   hsize_t    dims[4];
   bool_t     write_xtra, crosscoupling, to_obs, initialize,prdh_limit_mem_save;
   ActiveSet *as;
-  hid_t      ncid, file_dataspace, mem_dataspace;
+  hid_t      ncid, file_dataspace, mem_dataspace, file_dataspace2, mem_dataspace2;
 
   write_xtra = (io.ray_nwave_sel > 0);
   ncid = io.ray_ncid;
@@ -451,13 +490,16 @@ void writeRay(void) {
   offset[1] = mpi.iy;
   count[2] = spectrum.Nspect;
   if (( file_dataspace = H5Dget_space(io.ray_int_var) ) < 0) HERR(routineName);
+
   if (( H5Sselect_hyperslab(file_dataspace, H5S_SELECT_SET, offset,
                             NULL, count, NULL) ) < 0) HERR(routineName);
 
   /* Write intensity */
   if (( H5Dwrite(io.ray_int_var, H5T_NATIVE_DOUBLE, mem_dataspace,
           file_dataspace, H5P_DEFAULT, spectrum.I[0]) ) < 0) HERR(routineName);
-
+  if (( H5Dwrite(io.ray_intirr_var, H5T_NATIVE_DOUBLE, mem_dataspace,
+          file_dataspace, H5P_DEFAULT, spectrum.Iirr) ) < 0) HERR(routineName);
+  
   /* Calculate height of tau=1 and write to file*/
   if (input.p15d_wtau) {
     tau_one = (float *) calloc(spectrum.Nspect, sizeof(float));
@@ -531,7 +573,7 @@ void writeRay(void) {
   /* release dataspace resources */
   if (( H5Sclose(mem_dataspace) ) < 0) HERR(routineName);
   if (( H5Sclose(file_dataspace) ) < 0) HERR(routineName);
-
+  
   if (write_xtra) {
     /* Write opacity and emissivity for line and continuum */
     chi = matrix_float(infile.nz, io.ray_nwave_sel);
@@ -618,7 +660,30 @@ void writeRay(void) {
     if (( H5Sclose(mem_dataspace) ) < 0) HERR(routineName);
     if (( H5Sclose(file_dataspace) ) < 0) HERR(routineName);
     if (input.limit_memory) free(J);
-  }
+  } 
+
+  // for (i = 0; i<spectrum.Nspectirrnat; i++){
+  //     printf("\n\n\n\n\nIn writing portion...");
+  //     printf("\n\nlambda = %f; spectrum->Iirr_nat[%d] = %.30f",spectrum.lambda_irrnat[i],i,spectrum.Iirr_nat[i]);
+  // }
+  dims[0] = spectrum.Nspectirrnat;
+  if (( mem_dataspace = H5Screate_simple(1, dims, NULL) ) < 0)
+      HERR(routineName);
+  /* File dataspace */
+  offset[0] = mpi.ix;  
+  offset[1] = mpi.iy;  
+  offset[2] = 0;
+  count[0] = 1;
+  count[1] = 1;
+  count[2] = spectrum.Nspectirrnat;
+  if (( file_dataspace = H5Dget_space(io.ray_intirrnat_var) ) < 0) HERR(routineName);
+  if (( H5Sselect_hyperslab(file_dataspace, H5S_SELECT_SET, offset,
+                              NULL, count, NULL) ) < 0) HERR(routineName);
+  if (( H5Dwrite(io.ray_intirrnat_var, H5T_NATIVE_DOUBLE, mem_dataspace,
+          file_dataspace, H5P_DEFAULT, spectrum.Iirr_nat) ) < 0) HERR(routineName);
+  if (( H5Sclose(mem_dataspace) ) < 0) HERR(routineName);
+  if (( H5Sclose(file_dataspace) ) < 0) HERR(routineName);
+
   close_Background();  /* To avoid many open files */
   return;
 }
@@ -629,9 +694,12 @@ void writeRay(void) {
 void calculate_ray(void) {
   /* performs necessary reallocations and inits, and solves for ray */
   int i, nact, mu, k;
+  int ii;
   bool_t analyze_output, equilibria_only, prdh_limit_mem_save;
   Atom *atom;
   AtomicLine *line;
+
+  double *int_irr,geommu;
 
   close_Background();  /* Was opened previously, will be opened here again */
 
@@ -718,6 +786,19 @@ void calculate_ray(void) {
   /* reallocate intensities for correct number of rays */
   if (spectrum.I != NULL) freeMatrix((void **) spectrum.I);
   spectrum.I = matrix_double(spectrum.Nspect, atmos.Nrays);
+  if (spectrum.Iirr != NULL) free(spectrum.Iirr);
+  spectrum.Iirr = malloc(sizeof(double)*spectrum.Nspect);
+  int_irr = malloc(sizeof(double)*spectrum.Nspect);
+  for (i = 0; i<spectrum.Nspect; i++){
+          int_irr[i] = geometry.Itop[i][0];
+          geommu = geometry.muz[0];
+          spectrum.Iirr[i] = int_irr[i]*geommu;
+  } 
+  // for (ii = 0; ii<spectrum.Nspectirrnat; ii++){
+  //     // spectrum->Iirr_nat[i] = int_summed_nat[i];
+  //     printf("\n\nlambda = %f; spectrum->Iirr_nat[%d] = %.30f",spectrum.lambda_irrnat[ii],ii,spectrum.Iirr_nat[ii]);
+  // }
+  // printf("\n\n\ngeometry.muz[0] = %f",geometry.muz[0]);
   if (atmos.Stokes || input.backgr_pol) {
     if (spectrum.Stokes_Q != NULL) freeMatrix((void **) spectrum.Stokes_Q);
     spectrum.Stokes_Q = matrix_double(spectrum.Nspect, atmos.Nrays);

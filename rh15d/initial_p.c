@@ -405,6 +405,10 @@ void initSolution_alloc(void) {
   case ONE_D_PLANE:
     if (spectrum.I != NULL) freeMatrix((void **) spectrum.I);
     spectrum.I = matrix_double(spectrum.Nspect, atmos.Nrays);
+    if (spectrum.Iirr != NULL) free(spectrum.Iirr);
+    spectrum.Iirr = malloc(sizeof(double)*spectrum.Nspect);
+    // if (spectrum.Iirr_nat != NULL) free(spectrum.Iirr_nat);
+    // spectrum.Iirr_nat = malloc(sizeof(double)*spectrum.Nspect);
     if (atmos.Stokes || input.backgr_pol) {
       spectrum.Stokes_Q = matrix_double(spectrum.Nspect, atmos.Nrays);
       spectrum.Stokes_U = matrix_double(spectrum.Nspect, atmos.Nrays);

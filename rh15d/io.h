@@ -56,6 +56,7 @@
 #define Y_NAME         "y"
 #define ZOUT_NAME      "height"
 #define WAVE_NAME      "wavelength"
+#define WAVE_IRRNAT_NAME      "wavelength_irrnat"
 #define WAVE_SEL_NAME  "wavelength_selected"
 #define LINE_NAME      "line"
 #define CONT_NAME      "continuum"
@@ -82,6 +83,8 @@
 /* Definitions for the ray file */
 #define RAY_FILE     "output/output_ray.hdf5"
 #define INT_NAME    "intensity"
+#define INTIRR_NAME  "intensity_irrad"
+#define INTIRRNAT_NAME  "intensity_irradnat"
 #define FLUX_NAME   "flux"
 #define STOKES_Q    "stokes_Q"
 #define STOKES_U    "stokes_U"
@@ -162,7 +165,8 @@ typedef struct {
   int  j_ncid,            j_jlambda_var,     j_j20_var,          j_jgas_var;
   /* for the spectrum file*/
   int  spec_ncid,         spec_int_var,      spec_flux_var,     spec_wave_var,
-       spec_stokes_u_var, spec_stokes_q_var, spec_stokes_v_var;
+       spec_stokes_u_var, spec_stokes_q_var, spec_stokes_v_var, spec_intirr_var,
+       spec_intirrnat_var, spec_waveirrnat_var;
   /* for the input data file. Note: this HDF5 file has several groups */
   hid_t  in_ncid,           in_input_ncid,     in_atmos_ncid,     in_mpi_ncid;
   hid_t  in_atmos_T,        in_atmos_ne,       in_atmos_vz,       in_atmos_vt,
@@ -184,7 +188,8 @@ typedef struct {
   /* for atom file positions */
   long *atom_file_pos;
   /* for the ray file */
-  hid_t  ray_ncid,          ray_wave_var,      ray_int_var,
+  hid_t  ray_ncid,          ray_wave_var,      ray_int_var,  ray_intirr_var, 
+         ray_intirrnat_var, ray_waveintirrnat_var,
          ray_stokes_q_var,  ray_stokes_u_var,  ray_stokes_v_var,  ray_j_var,
          ray_chi_l_var,     ray_eta_l_var,     ray_chi_c_var,     ray_eta_c_var,
          ray_sca_c_var,     ray_chi_var,       ray_S_var,

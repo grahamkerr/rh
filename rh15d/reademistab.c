@@ -63,8 +63,8 @@ void ReadEmisTab(Atmosphere *atmos, Spectrum *spectrum, Geometry *geometry)
 {
   const char routineName[] = "ReadEmisTab";
   int nlambda, n_temp, n_dens;
-  double *lambda, *emiss_intpl, *emiss_grid, *temper, *edens, *int_summed, *wavel;
-  double p, dlambda;
+  double *lambda, *emiss_intpl, *emiss_intpl_nat, *emiss_grid, *temper, *edens, *int_summed, *wavel, *int_summed_nat, *wavel_nat;
+  double p, dlambda, lamh;
   double leftedge, rightedge, res, c, tot_int, avg_int, *new_wave, *new_emiss;
   int Npoints;  
   int i, j, k, n;
@@ -110,8 +110,12 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
 
   /* Create the array to hold the intensity to inject */
   emiss_intpl = malloc(sizeof(double)*Nspect*Ndep);
+  emiss_intpl_nat = malloc(sizeof(double)*nlambda*Ndep);
   int_summed = malloc(sizeof(double)*Nspect);
+  int_summed_nat = malloc(sizeof(double)*nlambda);
   wavel = malloc(sizeof(double)*Nspect);
+  wavel_nat = malloc(sizeof(double)*nlambda);
+
 
   dlambda = lambda[2]-lambda[1];
 
@@ -150,9 +154,28 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
          for (i = 0; i<Nspect; i++){
              emiss_intpl[i+ k*Nspect]= 0.0;
          }
+         for (i = 0; i<nlambda; i++){
+             emiss_intpl_nat[i+ k*nlambda]= 0.0;
+         }
      } else {
          Hunt(n_temp, temper, atmos->T[k], &tind);
          Hunt(n_dens, edens, atmos->ne[k]/1.0E06, &dind);
+  
+         for (i = 1; i<nlambda; i++){
+              // lamh = lambda[i]-(lambda[i]-lambda[i-1])/2.0;
+              lamh = lambda[i];
+              Hunt(nlambda-1, lambda, lamh, &wind);
+              TrilinearInterp(n_temp, n_dens, nlambda,
+                              emiss_grid, temper, edens, lambda, 
+                              tind, dind, wind,
+                              atmos->T[k], atmos->ne[k]/1.0E06, lamh,
+                              &p);
+
+              emiss_intpl_nat[i + k*nlambda] = p * ERG_TO_JOULE / CUBE(CM_TO_M) * SQ(lamh) / CLIGHT / 1.0E10 / 2.0/ PI * fabs(geometry->height[k]-geometry->height[k+1]) ;
+              // printf("\n\nlamh = %f; wind = %d; i = %d; p = %0.30f", lamh, wind, i, p);
+            }
+
+
          for (i = 0; i<Nspect; i++){
              if (spectrum->lambda[i]*10.0 < lambda[0] || spectrum->lambda[i]*10.0 > lambda[nlambda-1]) {
                  emiss_intpl[i+ k*Nspect]= 0.0;
@@ -221,6 +244,9 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
  for (i = 0; i<Nspect; i++){
     int_summed[i] = 0.0;
     }
+for (i = 0; i<nlambda; i++){
+    int_summed_nat[i] = 0.0;
+    }
  for (i = 0; i<Nspect; i++){ 
      wavel[i] = spectrum->lambda[i]*10.0;
      for (k = 0; k< Ndep; k++){
@@ -228,7 +254,14 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
          //int_summed[i] = 1e10*ERG_TO_JOULE/CUBE(CM_TO_M) * SQ(spectrum->lambda[i]*10.0)/ CLIGHT / 1.0E10 / 2.0/ PI * fabs(geometry->height[k]-geometry->height[k+1]) ;
      }
  } 
- 
+ for (i = 0; i<nlambda; i++){ 
+     wavel_nat[i] = lambda[i];
+     for (k = 0; k< Ndep; k++){
+         int_summed_nat[i] += emiss_intpl_nat[i+ k*nlambda];
+         // int_summed_nat[i] = 10.0;
+         //int_summed[i] = 1e10*ERG_TO_JOULE/CUBE(CM_TO_M) * SQ(spectrum->lambda[i]*10.0)/ CLIGHT / 1.0E10 / 2.0/ PI * fabs(geometry->height[k]-geometry->height[k+1]) ;
+     }
+ } 
 /* Place the intensity into the Itop variable, to be used in the rest of RH */
   geometry->Itop = matrix_double(Nspect, Nrays);
   for (i = 0; i<Nspect; i++){
@@ -237,6 +270,17 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
       }
   }
 
+  free(spectrum->Iirr_nat);
+  spectrum->Iirr_nat = malloc(sizeof(double)*nlambda);
+  for (i = 0; i<nlambda; i++){
+      spectrum->Iirr_nat[i] = int_summed_nat[i];
+      // printf("\n\nlambda = %f; spectrum->Iirr_nat[%d] = %.30f",lambda[i],i,spectrum->Iirr_nat[i]);
+  }
+  
+  spectrum->lambda_irrnat = (double *) malloc(nlambda * sizeof(double));
+  spectrum->lambda_irrnat = lambda;
+  spectrum->Nspectirrnat = nlambda;
+  // printf("spectrum->Nspectirrnat = %d", spectrum->Nspectirrnat);
 /* Write out the intensity and wavelength to a file */
 /*  fptr = fopen("int_summed.dat","wb");
   fwrite(int_summed, sizeof(double), Nspect, fptr);
@@ -244,7 +288,7 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
   fclose(fptr);
 */
   /* Free up the allocated arrays */
-  free(lambda);
+   free(lambda);
 //  free(dlam);
   free(temper);
   free(edens);
@@ -252,6 +296,9 @@ if ((fp = fopen(input.emistab_file, "r")) == NULL) {
   free(emiss_intpl);
   free(int_summed);
   free(wavel);
+  free(emiss_intpl_nat);
+  free(int_summed_nat);
+  free(wavel_nat);
 
 }
 /* ------- end ------------------------------------ ReadEmisTab.c --------- */
