@@ -968,7 +968,7 @@ void InitLemkeStark(AtomicLine *line)
   //    sprintf(messageStr, "Error opening LemkeStark.dat");
   //    Error(ERROR_LEVEL_2, routineName, messageStr);
   // }
-  if ((fplemkestark = fopen("input.lemke_file","rb")) == NULL)
+  if ((fplemkestark = fopen(input.lemke_file,"rb")) == NULL)
   {
      sprintf(messageStr, "Error opening LemkeStark file");
      Error(ERROR_LEVEL_2, routineName, messageStr);
