@@ -40,6 +40,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include "rh.h"
 #include "atom.h"
@@ -53,6 +54,7 @@
 /* --- Function prototypes --                          -------------- */
 
 void freeZeeman(ZeemanMultiplet *zm);
+double ConvStarkVoigt(AtomicLine *line, int k, double a, double v, double *F, enum VoigtAlgorithm algorithm);
 
 
 /* --- Global variables --                             -------------- */
@@ -114,7 +116,7 @@ void Profile(AtomicLine *line)
   vbroad = atom->vbroad;
   adamp  = (double *) malloc(atmos.Nspace * sizeof(double));
   if (line->Voigt) Damping(line, adamp);
-
+  /* GSK: Is this a good place to have the Lemke stuff?*/
   line->wphi = (double *) calloc(atmos.Nspace, sizeof(double));
 
   if (line->polarizable && (input.StokesMode > FIELD_FREE)) {
@@ -318,13 +320,16 @@ void Profile(AtomicLine *line)
             for (k = 0;  k < atmos.Nspace;  k++) {
 	      for (n = 0;  n < line->Ncomponent;  n++) {
 		vk = v[k][n] + sign * v_los[mu][k];
-	    
-		phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
-		  line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
-	      }
-	      line->wphi[k] += phi[k] * wlamu;
-	    }
-	  }
+	              if (line->doVCS_Stark)
+                 phi[k] = ConvStarkVoigt(line, k, adamp[k], vk, NULL, ARMSTRONG) *
+                   line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+                else
+        phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
+        line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+        }
+        line->wphi[k] += phi[k] * wlamu;
+      }
+    }
 	  if (input.limit_memory) writeProfile(line, lamu, phi);
 	}
       }
@@ -342,13 +347,17 @@ void Profile(AtomicLine *line)
 	phi = line->phi[la];
       
       for (k = 0;  k < atmos.Nspace;  k++) {
-	for (n = 0;  n < line->Ncomponent;  n++) {
-	  vk = (line->lambda[la] - line->lambda0 - line->c_shift[n]) *
-	    CLIGHT / (line->lambda0 * atom->vbroad[k]);
-	  phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
-	    line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
-	}
-	line->wphi[k] += phi[k] * wlamu;
+  for (n = 0;  n < line->Ncomponent;  n++) {
+    vk = (line->lambda[la] - line->lambda0 - line->c_shift[n]) *
+      CLIGHT / (line->lambda0 * atom->vbroad[k]);
+    if (line->doVCS_Stark) 
+      phi[k] = ConvStarkVoigt(line, k, adamp[k], vk, NULL, ARMSTRONG) * 
+        line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+    else
+      phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
+        line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+  }
+  line->wphi[k] += phi[k] * wlamu;
       }
       if (input.limit_memory) writeProfile(line, la, phi);
     }

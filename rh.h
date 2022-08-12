@@ -94,6 +94,10 @@ void   Linear(int Ntable, double *xtable, double *ytable,
 double BiLinear(int Na, double *a_table, double a,
 		int Nb, double *b_table, double b,
 		double **f, bool_t hunt);
+double TriLinear(int Na, double *a_table, double a,
+                 int Nb, double *b_table, double b,
+                 int Nc, double *c_table, double c,
+                double ***f, bool_t hunt);
 void TrilinearInterp(int nX, int nY, int nZ,
                      double *grid, double *xarr, double *yarr, double *zarr,
                      int x0, int y0, int z0,
@@ -112,6 +116,7 @@ double cubeconvol(int Nx, int Ny, double *f, double x, double y);
 
 void   GaussLeg(double x1, double x2, double *x, double *w, int n);
 double Voigt(double a, double v, double *F, enum VoigtAlgorithm algorithm);
+double ConvVoigt(double *vp, double *C, int n, double a, double v, double *F, enum VoigtAlgorithm algorithm);
 double gammln(double xx);
 
 void   w2(double dtau, double *w);

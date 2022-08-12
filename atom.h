@@ -45,11 +45,12 @@ typedef struct AtomicLine AtomicLine;
 typedef struct ZeemanMultiplet ZeemanMultiplet;
 typedef struct rhthread rhthread;
 typedef struct Paschenstruct Paschenstruct;
+typedef struct VCS_Stark VCS_Stark;
 
 /* --- Structure defines radiative transition --       -------------- */
 
 struct AtomicLine {
-  bool_t   symmetric, polarizable, Voigt, PRD;
+  bool_t   symmetric, polarizable, Voigt, PRD, doVCS_Stark;
   enum vdWaals vdWaals;
   int      i, j, Nlambda, Nblue, Ncomponent, Nxrd, fd_profile;
   double   lambda0, *lambda, isotope_frac, g_Lande_eff,
@@ -59,6 +60,7 @@ struct AtomicLine {
   int    **id0, **id1;
   double **frac;
   FILE    *fp_GII;
+  VCS_Stark *VCS_stark;
   struct Ng *Ng_prd;
   Atom *atom;
   AtomicLine **xrd;
@@ -184,6 +186,10 @@ struct Paschenstruct{
   double **C;
 };
 
+struct VCS_Stark{
+  double **DopplerWL, **S;
+  int N;
+};
 
 /* --- Associated function prototypes --               -------------- */
 
@@ -202,6 +208,7 @@ void FixedRate(Atom *atom);
 void freeAtom(Atom *atom);
 void freeAtomicLine(AtomicLine *line);
 void freeAtomicContinuum(AtomicContinuum *continuum);
+void freeVCS_Stark(VCS_Stark *VCS_stark);
 void getfjk(Element *element, double ne, int k, double *fjk, double *dfjk);
 void getLambda(AtomicLine *line);
 void getLambdaCont(AtomicContinuum *continuum, double lambdamin);
@@ -210,6 +217,7 @@ double getwlambda_cont(AtomicContinuum *continuum, int la);
 void initAtom(Atom *atom);
 void initAtomicLine(AtomicLine *line);
 void initAtomicContinuum(AtomicContinuum *continuum);
+void InitLemkeStark(AtomicLine *line);
 
 void initGammaAtom(Atom *atom, double cswitch);
 void initGammaMolecule(Molecule *molecule);

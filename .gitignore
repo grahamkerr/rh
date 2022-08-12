@@ -46,3 +46,4 @@ rhsc2d/run/
 rhsc3d/run/
 rhsphere/run/
 
+Makefile.config

@@ -79,3 +79,41 @@ double BiLinear(int Na, double *a_table, double a,
          (1.0 - fa)*(1.0 - fb) * f[i+1][j+1];
 }
 /* ------- end ---------------------------- BiLinear.c -------------- */
+
+/* ------- begin -------------------------- TriLinear.c -------------- */
+
+double TriLinear(int Na, double *a_table, double a,
+                int Nb, double *b_table, double b,
+                int Nc, double *c_table, double c,
+                double ***f, bool_t hunt)
+{
+  static int i = 0, j = 0, k = 0;
+
+  double fa, fb, fc;
+
+  /* --- Tri-linear interpolation of function f[][][] given on 
+ *          rectangular grid (a_table, b_table, c_table) -- ---------- */
+
+  if (hunt) {
+    Hunt(Na, a_table, a, &i);
+    Hunt(Nb, b_table, b, &j);
+    Hunt(Nc, c_table, c, &k);
+  } else {
+    Locate(Na, a_table, a, &i);
+    Locate(Nb, b_table, b, &j);
+    Locate(Nc, c_table, c, &k);
+  }
+  fa = (a_table[i+1] - a) / (a_table[i+1] - a_table[i]);
+  fb = (b_table[j+1] - b) / (b_table[j+1] - b_table[j]);
+  fc = (c_table[k+1] - c) / (c_table[k+1] - b_table[k]);
+
+   return                          fa*fb*fc * f[i][j][k]      +
+                           fa*fb*(1.0 - fc) * f[i][j][k+1]    +
+                           fa*(1.0 - fb)*fc * f[i][j+1][k]    +
+                   fa*(1.0 - fb)*(1.0 - fc) * f[i][j+1][k+1]  +
+                           (1.0 - fa)*fb*fc * f[i+1][j][k]    +
+                   (1.0 - fa)*fb*(1.0 - fc) * f[i+1][j][k+1]  +
+                   (1.0 - fa)*(1.0 - fb)*fc * f[i+1][j+1][k]  +
+           (1.0 - fa)*(1.0 - fb)*(1.0 - fc) * f[i+1][j+1][k+1];
+}
+/* ------- end ---------------------------- TriLinear.c ------------- */

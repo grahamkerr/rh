@@ -519,3 +519,30 @@ double VoigtLookup(double a, double v)
   return voigt;
 }
 /* ------- begin -------------------------- VoigtLookup.c ----------- */
+
+/* ------- begin -------------------------- ConvVoigt.c ------------- */
+
+/* Convolves the Voigt profile with a normalized profile. 
+ * 
+*/
+ 
+double ConvVoigt(double *vp, double *C, int n, double a, double v, 
+   double *F, enum VoigtAlgorithm algorithm)
+{
+  int i;
+  double vsum = 0, vm;
+
+  for (i = 0; i< n-1; i++)
+  {
+    vm = (vp[i+1] + vp[i])*.5;
+    vsum +=  C[i] *  ( Voigt(a, v-vm, F, algorithm) 
+                     + Voigt(a, v+vm, F, algorithm)) /*This term results from the intergral -inf .. 0 */
+                  * (vp[i+1] - vp[i]);
+  //  printf("%e\t%e\t%e\t%e\t%e\t%e\t%d\n",C[i]*(vp[i+1]-vp[i]), vm, v, Voigt(a, v-vm, F, algorithm), Voigt(a, v+vm, F, algorithm), vsum, i);
+  }
+  return vsum;
+}
+
+/* ------- end ---------------------------- ConvVoigt.c ------------- */
+
+

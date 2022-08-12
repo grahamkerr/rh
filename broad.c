@@ -240,23 +240,27 @@ void Stark(AtomicLine *line, double *GStark)
 	      line->i);
       Error(ERROR_LEVEL_2, routineName, messageStr);
     }
-    E_Rydberg = E_RYDBERG / (1.0 + M_ELECTRON / (atom->weight * AMU));
-    neff_l = Z * sqrt(E_Rydberg / (atom->E[ic] - atom->E[line->i]));
-    neff_u = Z * sqrt(E_Rydberg / (atom->E[ic] - atom->E[line->j]));
+
+    if ((atom->E[ic] - atom->E[line->i]) <= 0.0 ||
+  (atom->E[ic] - atom->E[line->j]) <= 0.0) {
+      cStark23 = 0.0;
+    } else {
+      E_Rydberg = E_RYDBERG / (1.0 + M_ELECTRON / (atom->weight * AMU));
+      neff_l = Z * sqrt(E_Rydberg / (atom->E[ic] - atom->E[line->i]));
+      neff_u = Z * sqrt(E_Rydberg / (atom->E[ic] - atom->E[line->j]));
     
-    C4 = (SQ(Q_ELECTRON) / (4.0 * PI * EPSILON_0)) * RBOHR *
-      (2.0*PI * SQ(RBOHR) / HPLANCK) / (18.0 * SQ(Z)*SQ(Z)) *
-	(SQ(neff_u*(5.0*SQ(neff_u) + 1.0)) -
-	 SQ(neff_l*(5.0*SQ(neff_l) + 1.0)));
-    cStark23 = 11.37 * pow(line->cStark * C4, 0.66666667);
-    
+      C4 = (SQ(Q_ELECTRON) / (4.0 * PI * EPSILON_0)) * RBOHR *
+  (2.0*PI * SQ(RBOHR) / HPLANCK) / (18.0 * SQ(Z)*SQ(Z)) *
+  (SQ(neff_u*(5.0*SQ(neff_u) + 1.0)) -
+   SQ(neff_l*(5.0*SQ(neff_l) + 1.0)));
+      cStark23 = 11.37 * pow(line->cStark * C4, 0.66666667);
+    }
     for (k = 0;  k < atmos.Nspace;  k++) {
       vrel = pow(C * atmos.T[k], 0.16666667) * Cm;
       GStark[k] = cStark23 * vrel * atmos.ne[k];
     }
   }
 }
-
 /* ------- end ---------------------------- Stark.c ----------------- */
 
 /* ------- begin -------------------------- StarkLinear.c ----------- */
@@ -331,7 +335,7 @@ void Damping(AtomicLine *line, double *adamp)
   }
   /* --- Add Linear Stark broadening for hydrogen only -- --------- */
 
-  if (strstr(atom->ID, "H ")) {
+  if (strstr(atom->ID, "H ") && !line->doVCS_Stark) {
     StarkLinear(line, adamp);
     for (k = 0;  k < atmos.Nspace;  k++) Qelast[k] += adamp[k];
   }
@@ -367,3 +371,17 @@ void MolecularDamping(MolecularLine *mrt, double *adamp)
 }
 /* ------- end ---------------------------- MolecularDamping.c ------ */
 
+/* ------- begin -------------------------- ConvStarkVoigt.c -------- */
+
+double ConvStarkVoigt(AtomicLine *line, int k, double a, double v, double *F, 
+   enum VoigtAlgorithm algorithm)
+{
+/*  if (strstr(line->atom->ID, "H ") == NULL) {
+    sprintf(messageStr, "Model is not a hydrogen atom: %s", line->atom->ID);
+    Error(ERROR_LEVEL_2, routineName, messageStr);*
+  }*/
+
+  return ConvVoigt(line->VCS_stark->DopplerWL[k], line->VCS_stark->S[k], line->VCS_stark->N, a, v, F, algorithm);
+}
+
+/* ------- end ---------------------------- ConvStarkVoigt.c -------- */
