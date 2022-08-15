@@ -23,6 +23,7 @@
 
        --                                              -------------- */
 
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
@@ -72,7 +73,9 @@ void readAtom(Atom *atom, bool_t active)
           Nspace = atmos.Nspace,
           Nread, Nrequired, checkPoint, L, nq, status;
   double  f, C, lambda0, lambdamin, vtherm, S, Ju, Jl,
-    c_sum, waveratio, lambda_air;
+    c_sum, waveratio, lambda_air, 
+    Z, n_eff, gbf_0, nstar, wnstar, wn_i, hc_cgs,
+    tg1, ne1, nn1;
 
   AtomicLine *line, *line1;
   AtomicContinuum *continuum;
@@ -98,6 +101,7 @@ void readAtom(Atom *atom, bool_t active)
   atom->active = active;
 
   /* --- Read atom ID and convert to uppercase --     -------------- */
+
   getLineString(&atom_string, COMMENT_CHAR, inputLine, exit_on_EOF=TRUE);
   Nread = sscanf(inputLine, "%2s", atom->ID);
   checkNread(Nread, Nrequired=1, routineName, checkPoint=1);
@@ -379,6 +383,7 @@ void readAtom(Atom *atom, bool_t active)
     continuum->alpha   =
       (double *) malloc(continuum->Nlambda * sizeof(double));
 
+
     if (strstr(nuDepStr, "EXPLICIT")) {
       continuum->hydrogenic = FALSE;
       for (la = continuum->Nlambda-1;  la >= 0;  la--) {
@@ -636,6 +641,7 @@ void initAtomicLine(AtomicLine *line)
   line->Voigt = TRUE;
   line->PRD = FALSE;
   line->vdWaals = UNSOLD;
+  line->doVCS_Stark = FALSE;
   line->i = line->j = line->Nlambda = line->Nblue = 0;
   line->Ncomponent = 1;
   line->Nxrd = 0;
@@ -748,7 +754,6 @@ void freeAtomicLine(AtomicLine *line)
   if (line->rho_prd != NULL) freeMatrix((void **) line->rho_prd);
   if (line->fp_GII != NULL)  free(line->fp_GII);
   if (line->VCS_stark != NULL) freeVCS_Stark(line->VCS_stark);
-
 }
 /* ------- end ---------------------------- freeAtomicLine.c -------- */
 
@@ -847,7 +852,7 @@ void readAtomicModels(void)
     atom->atom_file[sizeof(atom->atom_file) - 1] = '\0';  /* terminate string */
     readAtom(atom, active=(strstr(actionKey, "ACTIVE") ? TRUE : FALSE));
 
-    /* --- Set flag for initial soltion --             -------------- */
+    /* --- Set flag for initial solution --             -------------- */
 
     if (strstr(popsKey, "OLD_POPULATIONS")) {
       atom->initial_solution = OLD_POPULATIONS;
@@ -989,7 +994,8 @@ void InitLemkeStark(AtomicLine *line)
      Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   fclose(fplemkestark);
-
+  
+  
   series = line->i; 
   lne = line->j-series-1;
   if (series >= NSERIES || lne >= NLINES || lne >= nline[series])
@@ -999,12 +1005,20 @@ void InitLemkeStark(AtomicLine *line)
      Error(ERROR_LEVEL_2, routineName, messageStr);
   }
 
-  for (i = 0; i< mp[series][lne]; i++)
+  for (i = 0; i< mp[series][lne]; i++){
     // alpha[i] = exp10(log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i));
-    alpha[i] = pow(log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i),10.0);
-  for (i = 0; i< mne[series][lne]; i++)
+    alpha[i] = pow((double)10,log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i));
+    // printf("|||    alpha[%d] = %e\n", i, alpha[i]);
+  }
+  for (i = 0; i< mne[series][lne]; i++){
     lgNe[i] = log_ne0[series][lne] + log_ne_inc[series][lne]*i;
+    // printf("...   lgNe[%d] = %e\n", i, lgNe[i]);
+  }
    
+  for (i = 0; i < NT; i++){
+    printf("...   lgT[%d] = %e\n", i, lgT[i]);
+  }
+
   line->VCS_stark = malloc( sizeof(VCS_Stark));
   line->VCS_stark->DopplerWL = matrix_double(atmos.Nspace, NWL);
   line->VCS_stark->S = matrix_double(atmos.Nspace, NWL-1);
@@ -1027,12 +1041,11 @@ void InitLemkeStark(AtomicLine *line)
      for (i = 0; i <NWL-1; i++)
      {
         // line->VCS_stark->DopplerWL[k][i+1] = exp10((double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]));
-        line->VCS_stark->DopplerWL[k][i+1] = pow((double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]),10.0);
-
+        line->VCS_stark->DopplerWL[k][i+1] = pow((double)10,(double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]));
         wlmp = (line->VCS_stark->DopplerWL[k][i+1] + line->VCS_stark->DopplerWL[k][i])*.5;
         if (wlmp >= tempWLmp[mp[series][lne]-2]) wlmp = tempWLmp[mp[series][lne]-2]*.999;
         // line->VCS_stark->S[k][i] = exp10(TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE)); /* 1e-6 converts m^-3 to cm^-3 */
-        line->VCS_stark->S[k][i] = pow(TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE),10.0); /* 1e-6 converts m^-3 to cm^-3 */
+        line->VCS_stark->S[k][i] = pow((double)10,TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE)); /* 1e-6 converts m^-3 to cm^-3 */
      }
      
      /* Normalize to 0.5 */
@@ -1042,6 +1055,7 @@ void InitLemkeStark(AtomicLine *line)
        sum += (line->VCS_stark->DopplerWL[k][i+1] - line->VCS_stark->DopplerWL[k][i]) * (line->VCS_stark->S[k][i]);
      }
      for (i=0; i < NWL-1; i++) line->VCS_stark->S[k][i] /= (2*sum);
+     // printf(">>> line->VCS_stark->S[%d][750]\t = %e\n", k, line->VCS_stark->S[k][750]);
   }
   for (i = 0; i<mp[series][lne]-1; i++) free(arr3d[i]);
   free(arr3d);

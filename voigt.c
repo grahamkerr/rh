@@ -518,7 +518,7 @@ double VoigtLookup(double a, double v)
   }
   return voigt;
 }
-/* ------- begin -------------------------- VoigtLookup.c ----------- */
+/* ------- end -------------------------- VoigtLookup.c ----------- */
 
 /* ------- begin -------------------------- ConvVoigt.c ------------- */
 
@@ -538,7 +538,7 @@ double ConvVoigt(double *vp, double *C, int n, double a, double v,
     vsum +=  C[i] *  ( Voigt(a, v-vm, F, algorithm) 
                      + Voigt(a, v+vm, F, algorithm)) /*This term results from the intergral -inf .. 0 */
                   * (vp[i+1] - vp[i]);
-  //  printf("%e\t%e\t%e\t%e\t%e\t%e\t%d\n",C[i]*(vp[i+1]-vp[i]), vm, v, Voigt(a, v-vm, F, algorithm), Voigt(a, v+vm, F, algorithm), vsum, i);
+   // printf("%e\t%e\t%e\t%e\t%e\t%e\t%d\n",C[i]*(vp[i+1]-vp[i]), vm, v, Voigt(a, v-vm, F, algorithm), Voigt(a, v+vm, F, algorithm), vsum, i);
   }
   return vsum;
 }

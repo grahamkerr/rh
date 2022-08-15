@@ -97,8 +97,9 @@ void Profile(AtomicLine *line)
 
          If Profile() is called from adjustStokes() then the PRD
          profile ratio rho should be kept, and should not be 
-         reinitialized. --                             -------------- */
-
+         reinitialized. --   
+                                   -------------- */
+  // printf("\n ||||| inside Profile");
   if (line->PRD && line->rho_prd == NULL) {
     if (input.PRD_angle_dep == PRD_ANGLE_DEP) 
       Nlamu = 2*atmos.Nrays * line->Nlambda;
@@ -114,9 +115,12 @@ void Profile(AtomicLine *line)
   }
 
   vbroad = atom->vbroad;
-  adamp  = (double *) malloc(atmos.Nspace * sizeof(double));
-  if (line->Voigt) Damping(line, adamp);
-  /* GSK: Is this a good place to have the Lemke stuff?*/
+  // adamp  = (double *) calloc(atmos.Nspace * sizeof(double));
+  adamp  = (double *) calloc(atmos.Nspace, sizeof(double));
+  if (line->Voigt) {
+    // printf("\n ....... calling Damping for %2s %d -> %d", atom->ID, line->j, line->i);
+    Damping(line, adamp);
+  }
   line->wphi = (double *) calloc(atmos.Nspace, sizeof(double));
 
   if (line->polarizable && (input.StokesMode > FIELD_FREE)) {
@@ -320,14 +324,30 @@ void Profile(AtomicLine *line)
             for (k = 0;  k < atmos.Nspace;  k++) {
 	      for (n = 0;  n < line->Ncomponent;  n++) {
 		vk = v[k][n] + sign * v_los[mu][k];
-	              if (line->doVCS_Stark)
+	              if (line->doVCS_Stark) {
+               // if (line->doVCS_Stark && line->j==2) {
+                 // printf("... BEFORE ConvStarkVoigt1, phi[%d] = %e\n", k, phi[k]);
                  phi[k] = ConvStarkVoigt(line, k, adamp[k], vk, NULL, ARMSTRONG) *
                    line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
-                else
+                 // printf("... AFTER ConvStarkVoigt1, phi[%d] = %e\n\n", k, phi[k]);
+                } else {
+      //             if (strstr(atom->ID, "H ") && line->j==2) {
+      //   printf("... BEFORE Voigt1, phi[%d] = %e\n", k, phi[k]);
+      // }
         phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
         line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+      //  if (strstr(atom->ID, "H ") && line->j==2) {
+      //   printf("... AFTER Voigt1, phi[%d] = %e\n", k, phi[k]);
+      // }
         }
+      }
+      // if (strstr(atom->ID, "H ") && line->j==2 && mu == 0 && la == (int)(la = line->Nlambda/2)) {
+      //   printf("... BEFORE sum1, to_obs = %d, mu[%d] & la[%d] (wlma=%e), wphi[%d] = %e\n", to_obs, mu, la, wlamu, k,line->wphi[k]);
+      // }
         line->wphi[k] += phi[k] * wlamu;
+      // if (strstr(atom->ID, "H ") && line->j==2  && mu == 0 && la == (int)(la = line->Nlambda/2)) {
+      //   printf("... AFTER sum1, to_obs = %d, mu[%d] & la[%d] (wlma=%e), wphi[%d] = %e\n",to_obs, mu, la, wlamu, k,line->wphi[k]);
+      // }
       }
     }
 	  if (input.limit_memory) writeProfile(line, lamu, phi);
@@ -350,12 +370,22 @@ void Profile(AtomicLine *line)
   for (n = 0;  n < line->Ncomponent;  n++) {
     vk = (line->lambda[la] - line->lambda0 - line->c_shift[n]) *
       CLIGHT / (line->lambda0 * atom->vbroad[k]);
-    if (line->doVCS_Stark) 
+    if (line->doVCS_Stark) {
+    // if (line->doVCS_Stark && line->j==2) {
+      // printf("... BEFORE ConvStarkVoigt2, phi[%d] = %e\n", k, phi[k]); 
       phi[k] = ConvStarkVoigt(line, k, adamp[k], vk, NULL, ARMSTRONG) * 
         line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
-    else
+      // printf("... AFTER ConvStarkVoigt2, phi[%d] = %e\n\n", k, phi[k]);
+    } else {
+      // if (strstr(atom->ID, "H ") && line->j==2) {
+      //   printf("... BEFORE Voigt2, phi[%d] = %e\n", k, phi[k]);
+      // }
       phi[k] += Voigt(adamp[k], vk, NULL, ARMSTRONG) *
         line->c_fraction[n] / (SQRTPI * atom->vbroad[k]);
+      //  if (strstr(atom->ID, "H ") && line->j==2) {
+      //   printf("... AFTER Voigt2, phi[%d] = %e\n", k, phi[k]);
+      // } 
+    }
   }
   line->wphi[k] += phi[k] * wlamu;
       }

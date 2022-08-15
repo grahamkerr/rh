@@ -338,6 +338,7 @@ void Damping(AtomicLine *line, double *adamp)
   if (strstr(atom->ID, "H ") && !line->doVCS_Stark) {
     StarkLinear(line, adamp);
     for (k = 0;  k < atmos.Nspace;  k++) Qelast[k] += adamp[k];
+    // for (k = 0;  k < atmos.Nspace;  k++) Qelast[k] += 0.0;
   }
   /* --- Store the total rate of elastic collisions in case of PRD  */
 
@@ -380,7 +381,10 @@ double ConvStarkVoigt(AtomicLine *line, int k, double a, double v, double *F,
     sprintf(messageStr, "Model is not a hydrogen atom: %s", line->atom->ID);
     Error(ERROR_LEVEL_2, routineName, messageStr);*
   }*/
-
+  /*printf("\n... For %2s, lines %d -> %d, inside ConvStarkVoigt", line->atom->ID, line->j, line->i);*/
+  for (k = 0;  k < 190;  k++) {
+      printf(">>> line->VCS_stark->DopplerWL[%d][750] = %e\n\tline->VCS_stark->S[%d][750]= %e\n", k, line->VCS_stark->DopplerWL[k][750], line->VCS_stark->S[k][750]);
+    }
   return ConvVoigt(line->VCS_stark->DopplerWL[k], line->VCS_stark->S[k], line->VCS_stark->N, a, v, F, algorithm);
 }
 
