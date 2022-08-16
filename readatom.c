@@ -289,7 +289,7 @@ void readAtom(Atom *atom, bool_t active)
     if (strstr(shapeStr, "VCS_STARK"))
     {
       line->doVCS_Stark=TRUE;
-      InitLemkeStark(line);
+      // InitLemkeStark(line);
     }
 
     if (strstr(vdWstr, "PARAMTR"))
@@ -942,128 +942,6 @@ char *getAtomID(char *atom_file)
 }
 /* ------- end ---------------------------- getAtomID.c ------------- */
 
-/* ------- begin -------------------------- InitLemkeStark.c -------- */
-
-#define NALPHA 66
-#define NT 8
-#define NNE 17
-#define NLINES 21
-#define NSERIES 4
-#define NTOTAL NSERIES*NLINES*NALPHA*NNE*NT
-#define NLNS NSERIES*NLINES
-#define NWL 1501
-void InitLemkeStark(AtomicLine *line)
-{
-  int i, j, k, series, lne;
-  int mp[NSERIES][NLINES], mne[NSERIES][NLINES], nline[NSERIES];
-  double svcs[NSERIES][NLINES][NALPHA][NNE][NT], alpha[NALPHA], lgT[NT], lgNe[NNE];
-  double log_alpha0[NSERIES][NLINES], log_ne0[NSERIES][NLINES];
-  double log_alpha_inc[NSERIES][NLINES], log_ne_inc[NSERIES][NLINES];
-  double sum,***arr3d, *tempWL, *tempWLmp, wlmp;
-  FILE *fplemkestark;
-  const char routineName[] = "InitLemkeStark";
-
-  if (strstr(line->atom->ID, "H ") == NULL) {
-     sprintf(messageStr, "Model is not a hydrogen atom: %s", line->atom->ID);
-     Error(ERROR_LEVEL_2, routineName, messageStr);
-  }
-  /* GSK: Change this to have the .dat file as an input via keyword input, similar to emistab */
-  // if ((fplemkestark = fopen("LemkeStark.dat","rb")) == NULL)
-  // {
-  //    sprintf(messageStr, "Error opening LemkeStark.dat");
-  //    Error(ERROR_LEVEL_2, routineName, messageStr);
-  // }
-  if ((fplemkestark = fopen(input.lemke_file,"rb")) == NULL)
-  {
-     sprintf(messageStr, "Error opening LemkeStark file");
-     Error(ERROR_LEVEL_2, routineName, messageStr);
-  }
-  printf("\n>>>> Reading LemkeStark file ('%s') for calculating Hydrogen broadening\n",input.lemke_file);
-
-  if (fread(svcs[0][0][0][0],sizeof(double),NTOTAL,fplemkestark) != NTOTAL 
-     || fread(lgT, sizeof(double), NT, fplemkestark) != NT
-     || fread(log_alpha0[0], sizeof(double), NLNS, fplemkestark) != NLNS 
-     || fread(log_ne0[0], sizeof(double), NLNS, fplemkestark) != NLNS
-     || fread(log_alpha_inc[0], sizeof(double), NLNS, fplemkestark) != NLNS
-     || fread(log_ne_inc[0], sizeof(double), NLNS, fplemkestark) != NLNS
-     || fread(mp[0], sizeof(int), NLNS, fplemkestark) != NLNS
-     || fread(mne[0], sizeof(int), NLNS, fplemkestark) != NLNS
-     || fread(nline, sizeof(int), NSERIES, fplemkestark) != NSERIES)
-  { 
-     sprintf(messageStr, "Error reading LemkeStark data");
-     Error(ERROR_LEVEL_2, routineName, messageStr);
-  }
-  fclose(fplemkestark);
-  
-  
-  series = line->i; 
-  lne = line->j-series-1;
-  if (series >= NSERIES || lne >= NLINES || lne >= nline[series])
-  {
-    
-     sprintf(messageStr, "Error: VCS_STARK requested for unknown line");
-     Error(ERROR_LEVEL_2, routineName, messageStr);
-  }
-
-  for (i = 0; i< mp[series][lne]; i++){
-    // alpha[i] = exp10(log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i));
-    alpha[i] = pow((double)10,log_alpha0[series][lne] + log_alpha_inc[series][lne]*(double)(i));
-    // printf("|||    alpha[%d] = %e\n", i, alpha[i]);
-  }
-  for (i = 0; i< mne[series][lne]; i++){
-    lgNe[i] = log_ne0[series][lne] + log_ne_inc[series][lne]*i;
-    // printf("...   lgNe[%d] = %e\n", i, lgNe[i]);
-  }
-   
-  for (i = 0; i < NT; i++){
-    printf("...   lgT[%d] = %e\n", i, lgT[i]);
-  }
-
-  line->VCS_stark = malloc( sizeof(VCS_Stark));
-  line->VCS_stark->DopplerWL = matrix_double(atmos.Nspace, NWL);
-  line->VCS_stark->S = matrix_double(atmos.Nspace, NWL-1);
-  line->VCS_stark->N = NWL;
-
-  arr3d = malloc(sizeof(double**) * (mp[series][lne]-1));
-  for (i = 0; i<mp[series][lne]-1; i++) arr3d[i] = malloc(sizeof(double*) * mne[series][lne]);
-  tempWL = malloc(sizeof(double) * mp[series][lne]);
-  tempWLmp = malloc(sizeof(double) * (mp[series][lne]-1));
-  for (k = 0;  k < atmos.Nspace;  k++)
-  {
-     tempWL[0] = (1.25e-9 * pow(atmos.ne[k]*1e-6,2./3.) * alpha[0])/10 * CLIGHT / (line->lambda0 * line->atom->vbroad[k]);
-     for (i = 1; i < mp[series][lne]; i++) // start at i=1 to throw out the initial svcs which is always 0.0
-     {
-       tempWL[i]= (1.25e-9 * pow(atmos.ne[k]*1e-6,2./3.) * alpha[i])/10 * CLIGHT / (line->lambda0 * line->atom->vbroad[k]); /* WL in Angstroms then converted to voigt WL units) */
-       tempWLmp[i-1] = (tempWL[i] + tempWL[i-1])*.5;
-       for (j=0; j<mne[series][lne];j++) arr3d[i-1][j] = svcs[series][lne][i][j];
-     }
-     line->VCS_stark->DopplerWL[k][0] = tempWL[0];
-     for (i = 0; i <NWL-1; i++)
-     {
-        // line->VCS_stark->DopplerWL[k][i+1] = exp10((double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]));
-        line->VCS_stark->DopplerWL[k][i+1] = pow((double)10,(double)(i)/(NWL-1) * (log10(tempWL[mp[series][lne]-1]) - log10(tempWL[0])) + log10(tempWL[0]));
-        wlmp = (line->VCS_stark->DopplerWL[k][i+1] + line->VCS_stark->DopplerWL[k][i])*.5;
-        if (wlmp >= tempWLmp[mp[series][lne]-2]) wlmp = tempWLmp[mp[series][lne]-2]*.999;
-        // line->VCS_stark->S[k][i] = exp10(TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE)); /* 1e-6 converts m^-3 to cm^-3 */
-        line->VCS_stark->S[k][i] = pow((double)10,TriLinear(mp[series][lne]-1, tempWLmp, wlmp, mne[series][lne], lgNe, log10(atmos.ne[k]*1e-6),NT, lgT, log10(atmos.T[k]), arr3d, TRUE)); /* 1e-6 converts m^-3 to cm^-3 */
-     }
-     
-     /* Normalize to 0.5 */
-     sum = 0;
-     for (i = 0; i< NWL-1; i++)
-     {
-       sum += (line->VCS_stark->DopplerWL[k][i+1] - line->VCS_stark->DopplerWL[k][i]) * (line->VCS_stark->S[k][i]);
-     }
-     for (i=0; i < NWL-1; i++) line->VCS_stark->S[k][i] /= (2*sum);
-     // printf(">>> line->VCS_stark->S[%d][750]\t = %e\n", k, line->VCS_stark->S[k][750]);
-  }
-  for (i = 0; i<mp[series][lne]-1; i++) free(arr3d[i]);
-  free(arr3d);
-  free(tempWL);
-  free(tempWLmp);
-}
-
-/* ------- end ---------------------------- InitLemkeStark.c -------- */
 
 double **allocate2d(int n1, int n2)
 {

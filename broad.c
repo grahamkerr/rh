@@ -381,10 +381,6 @@ double ConvStarkVoigt(AtomicLine *line, int k, double a, double v, double *F,
     sprintf(messageStr, "Model is not a hydrogen atom: %s", line->atom->ID);
     Error(ERROR_LEVEL_2, routineName, messageStr);*
   }*/
-  /*printf("\n... For %2s, lines %d -> %d, inside ConvStarkVoigt", line->atom->ID, line->j, line->i);*/
-  for (k = 0;  k < 190;  k++) {
-      printf(">>> line->VCS_stark->DopplerWL[%d][750] = %e\n\tline->VCS_stark->S[%d][750]= %e\n", k, line->VCS_stark->DopplerWL[k][750], line->VCS_stark->S[k][750]);
-    }
   return ConvVoigt(line->VCS_stark->DopplerWL[k], line->VCS_stark->S[k], line->VCS_stark->N, a, v, F, algorithm);
 }
 
