@@ -248,7 +248,7 @@ void readAtmos_hdf5(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
     using Tcut. If we read those in there, perform the operations needed for 
     interpolating the emissivity grid for irradiation, and then run the Tcut 
     sections everything should work out... I think... */
-  if (input.solve_ne == NONE) {
+  /*if (input.solve_ne == NONE) {
       if ((ierror = H5Dread(infile->ne_varid, H5T_NATIVE_DOUBLE, memspace_id,
                   dataspace_id, H5P_DEFAULT, atmos->ne)) < 0) HERR(routineName);
   }
@@ -257,6 +257,7 @@ void readAtmos_hdf5(int xi, int yi, Atmosphere *atmos, Geometry *geometry,
   if (geometry->vboundary[TOP] == 4) {
             ReadEmisTab(atmos, &spectrum, geometry);
            }
+  */   
   /* ... ending Graham Kerr's mods. Temperature and electron density are re-read 
      below */         
 
