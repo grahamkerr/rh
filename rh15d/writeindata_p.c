@@ -357,6 +357,13 @@ void init_hdf5_indata_new(void)
   if (( H5DSattach_scale(io.in_atmos_vz, id_z, 2)) < 0) HERR(routineName);
   if (( H5LTset_attribute_float(ncid_atmos, VZ_NAME, "_FillValue",
                                 &FILLVALUE, 1) ) < 0) HERR(routineName);
+  if (( io.in_atmos_vt = H5Dcreate(ncid_atmos, VTURB_NAME, H5T_NATIVE_FLOAT,
+         file_dspace, H5P_DEFAULT, plist, H5P_DEFAULT)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.in_atmos_vt, id_x, 0)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.in_atmos_vt, id_y, 1)) < 0) HERR(routineName);
+  if (( H5DSattach_scale(io.in_atmos_vt, id_z, 2)) < 0) HERR(routineName);
+  if (( H5LTset_attribute_float(ncid_atmos, VTURB_NAME, "_FillValue",
+                                &FILLVALUE, 1) ) < 0) HERR(routineName);
   if (( io.in_atmos_z = H5Dcreate(ncid_atmos, ZH_NAME, H5T_NATIVE_FLOAT,
          file_dspace, H5P_DEFAULT, plist, H5P_DEFAULT)) < 0) HERR(routineName);
   if (( H5DSattach_scale(io.in_atmos_z, id_x, 0)) < 0) HERR(routineName);
@@ -626,7 +633,8 @@ void init_hdf5_indata_existing(void)
                                 H5P_DEFAULT) ) < 0) HERR(routineName);
   if (( io.in_atmos_ne = H5Dopen(io.in_atmos_ncid, NE_NAME,
                                 H5P_DEFAULT) ) < 0) HERR(routineName);
-
+  if (( io.in_atmos_vt = H5Dopen(io.in_atmos_ncid, VTURB_NAME,
+                                H5P_DEFAULT) ) < 0) HERR(routineName);
   if (( io.in_mpi_tm = H5Dopen(io.in_mpi_ncid, TASK_MAP,
                                H5P_DEFAULT) ) < 0) HERR(routineName);
   if (( io.in_mpi_tn = H5Dopen(io.in_mpi_ncid, TASK_NUMBER,
@@ -658,6 +666,7 @@ void close_hdf5_indata(void)
   /* Close all datasets */
   if (( H5Dclose(io.in_atmos_T) ) < 0) HERR(routineName);
   if (( H5Dclose(io.in_atmos_vz) ) < 0) HERR(routineName);
+  if (( H5Dclose(io.in_atmos_vt) ) < 0) HERR(routineName);
   if (( H5Dclose(io.in_atmos_z) ) < 0) HERR(routineName);
   if (( H5Dclose(io.in_atmos_ne) ) < 0) HERR(routineName);
   if (( H5Dclose(io.in_mpi_tm) ) < 0) HERR(routineName);
@@ -740,6 +749,8 @@ void writeAtmos_p(void)
         file_dspace, H5P_DEFAULT, geometry.height) ) < 0) HERR(routineName);
   if (( H5Dwrite(io.in_atmos_ne, H5T_NATIVE_DOUBLE, mem_dspace,
                file_dspace, H5P_DEFAULT, atmos.ne) ) < 0) HERR(routineName);
+  if (( H5Dwrite(io.in_atmos_vt, H5T_NATIVE_DOUBLE, mem_dspace,
+           file_dspace, H5P_DEFAULT, atmos.vturb) ) < 0) HERR(routineName);
   /* release dataspace resources */
   if (( H5Sclose(mem_dspace) ) < 0) HERR(routineName);
   if (( H5Sclose(file_dspace) ) < 0) HERR(routineName);
